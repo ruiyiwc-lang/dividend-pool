@@ -135,25 +135,22 @@ function syncFromDOM(code){
  var arr=[];
  rowsOf(code).forEach(function(tr){
   var ins=tr.querySelectorAll('input');
-  var d=ins[0].value, p=parseFloat(ins[1].value), s=parseFloat(ins[2].value), t=parseFloat(ins[3].value);
-  if(t>0&&s>0){ p=Math.round(t/s*10000)/10000; ins[1].value=p; }
-  if(!(isNaN(p))&&!(isNaN(s))&&s>0) arr.push({d:d||'',p:p,s:s,t:(t>0?t:undefined)});
+  var d=ins[0].value, p=parseFloat(ins[1].value), s=parseFloat(ins[2].value);
+  if(!(isNaN(p))&&!(isNaN(s))&&s>0) arr.push({d:d||'',p:p,s:s});
  });
  state.buys[code]=arr; save();
 }
-function addRow(code,d,p,s,t){
+function addRow(code,d,p,s){
  var host=document.getElementById('rows_'+code);
  var tr=document.createElement('tr');
  tr.innerHTML='<td><input type="date" value="'+(d||'')+'"></td>'+
-  '<td><input type="number" step="0.01" inputmode="decimal" placeholder="价格" value="'+(p!=null?p:'')+'"></td>'+
+  '<td><input type="number" step="0.01" inputmode="decimal" placeholder="价格" title="直接填app上的成本价（已含手续费）" value="'+(p!=null?p:'')+'"></td>'+
   '<td><input type="number" step="100" inputmode="numeric" placeholder="股数" value="'+(s!=null?s:'')+'"></td>'+
-  '<td><input type="number" step="0.01" inputmode="decimal" placeholder="可选" title="填入含手续费的总付款（清算金额），自动算出 买入价＝总付款÷股数" value="'+(t!=null?t:'')+'"></td>'+
   '<td><button class="delbtn" title="删除这笔">✕</button></td>';
  var ins=tr.querySelectorAll('input');
  ins[0].onchange=function(){ syncFromDOM(code); };
  ins[1].oninput=function(){ syncFromDOM(code); recalcAll(); };
  ins[2].oninput=function(){ syncFromDOM(code); recalcAll(); };
- ins[3].oninput=function(){ syncFromDOM(code); recalcAll(); };
  tr.querySelector('.delbtn').onclick=function(){ tr.remove(); syncFromDOM(code); recalcAll(); };
  host.appendChild(tr);
  if(p!=null) { syncFromDOM(code); }
@@ -181,7 +178,7 @@ function build(){
    '<div class="sect">买入计划（200万分配 · 挂单价×股数）</div>'+
    '<table class="plantable"><tr><th>档位</th><th>挂单价</th><th>股数</th><th>金额</th></tr><tbody id="plan_'+st.code+'"></tbody></table>'+
    '<div class="sect">实际买入记录</div>'+
-   '<table><tr><th>日期</th><th>买入价</th><th>股数</th><th title="填入含手续费的总付款（清算金额），自动算出 买入价＝总付款÷股数">总付款<br><span class="small">含费·可选</span></th><th></th></tr><tbody id="rows_'+st.code+'"></tbody></table>'+
+   '<table><tr><th>日期</th><th>买入价</th><th>股数</th><th></th></tr><tbody id="rows_'+st.code+'"></tbody></table>'+
    '<button class="addbtn" onclick="addRow(\''+st.code+'\')">＋ 加一笔</button>'+
    '<div class="small" style="margin:4px 0">已收到分红 <input class="dps" type="number" step="0.01" value="'+(state.div[st.code]||0)+'" onchange="setDiv(\''+st.code+'\',this.value)"> 元（现金到账后填写，未分红填0）</div>'+
    '<div class="stats">'+
@@ -197,7 +194,7 @@ function build(){
    '<div class="lines" id="ln_'+st.code+'"></div>'+
    '</div>';
   host.appendChild(d);
-  (state.buys[st.code]||[]).forEach(function(b){ addRow(st.code,b.d,b.p,b.s,b.t); });
+  (state.buys[st.code]||[]).forEach(function(b){ addRow(st.code,b.d,b.p,b.s); });
  });
 }
 /* ---------- 其他持仓 ---------- */
@@ -276,10 +273,10 @@ function gSync(code){
  var arr=[];
  growsOf(code).forEach(function(tr){
   var ins=tr.querySelectorAll('input');
-  var d=ins[0].value, p=parseFloat(ins[1].value), s=parseFloat(ins[2].value), t=parseFloat(ins[3].value);
+  var d=ins[0].value, p=parseFloat(ins[1].value), s=parseFloat(ins[2].value);
+  var t=ins.length>3?parseFloat(ins[3].value):NaN;
   var r=ins.length>4?parseFloat(ins[4].value):NaN;
   if(isHK&&t>0&&s>0&&r>0){ p=Math.round(t/r/s*10000)/10000; ins[1].value=p; }
-  else if(!isHK&&t>0&&s>0){ p=Math.round(t/s*10000)/10000; ins[1].value=p; }
   if(!(isNaN(p))&&!(isNaN(s))&&s>0) arr.push({d:d||'',p:p,s:s,t:(t>0?t:undefined),r:(isHK&&r>0?r:undefined)});
  });
  it.buys=arr; gsave();
@@ -292,16 +289,16 @@ function gAddRow(code,d,p,s,t,r){
   '<td><input type="number" step="0.001" inputmode="decimal" placeholder="价格" title="港币价格" value="'+(p!=null?p:'')+'"></td>'+
   '<td><input type="number" step="1" inputmode="numeric" placeholder="股数" value="'+(s!=null?s:'')+'"></td>'+
   (isHK
-   ?'<td><input type="number" step="0.01" inputmode="decimal" placeholder="人民币" title="填成交单上的清算金额（人民币），页面自动按汇率折算港币并算出买入价＝总付款÷汇率÷股数" value="'+(t!=null?t:'')+'"></td>'+
+   ?'<td><input type="number" step="0.01" inputmode="decimal" placeholder="人民币" title="填成交单上的清算金额（人民币）。明细单晚一两天出，先填成交价、回头补填这里即可；汇率按你填的成交日期自动获取" value="'+(t!=null?t:'')+'"></td>'+
     '<td><input type="number" step="0.0001" inputmode="decimal" placeholder="自动" title="港币→人民币汇率。留空则按该行日期自动获取（ECB参考汇率），也可手改成成交单上的实际汇率" value="'+(r!=null?r:'')+'"></td>'
-   :'<td><input type="number" step="0.01" inputmode="decimal" placeholder="可选" title="填入含手续费的总付款，自动算出 买入价＝总付款÷股数" value="'+(t!=null?t:'')+'"></td><td>—</td>');
+   :'<td>—</td><td>—</td>');
  tr.innerHTML+='<td><button class="delbtn" title="删除这笔">✕</button></td>';
  var ins=tr.querySelectorAll('input');
  ins[0].onchange=function(){ if(isHK&&ins[4]&&ins[4].dataset.auto){ ins[4].value=''; } gSync(code); recalcAll(); ensureFx(code,tr); };
  ins[1].oninput=function(){ gSync(code); recalcAll(); };
  ins[2].oninput=function(){ gSync(code); recalcAll(); };
- ins[3].oninput=function(){ gSync(code); recalcAll(); ensureFx(code,tr); };
- if(ins[4]) ins[4].oninput=function(){ if(ins[4].dataset.auto)ins[4].dataset.auto=''; gSync(code); recalcAll(); };
+ if(ins.length>3) ins[3].oninput=function(){ gSync(code); recalcAll(); ensureFx(code,tr); };
+ if(ins.length>4) ins[4].oninput=function(){ if(ins[4].dataset.auto)ins[4].dataset.auto=''; gSync(code); recalcAll(); };
  tr.querySelector('.delbtn').onclick=function(){ tr.remove(); gSync(code); recalcAll(); };
  host.appendChild(tr);
  if(p!=null) gSync(code);
@@ -318,7 +315,7 @@ function gBuild(){
    ' <span class="small">成本 <b id="gch_'+it.code+'">—</b> ｜ 市值 <b id="gmvh_'+it.code+'">—</b> ｜ 盈亏 <b id="gplh_'+it.code+'">—</b></span>'+
    ' <button class="delbtn" style="margin-left:auto" title="移除该标的" onclick="event.stopPropagation();removeItem(\''+it.code+'\')">✕</button></h3>'+
    '<div id="gbody_'+it.code+'" style="display:none">'+
-   '<table><tr><th>日期</th><th>买入价</th><th>股数</th><th title="港股填成交单清算金额（人民币），自动折算港币；A股填含手续费的总付款">总付款<br><span class="small">含费·可选</span></th><th title="港币→人民币汇率，仅港股：留空按该行日期自动获取（ECB参考汇率），可手改成成交单上的实际汇率">汇率<br><span class="small">港股·自动</span></th><th></th></tr><tbody id="grows_'+it.code+'"></tbody></table>'+
+   '<table><tr><th>日期</th><th title="A股/ETF直接填app上的成本价（已含手续费）">买入价</th><th>股数</th><th title="仅港股：填成交单清算金额（人民币），自动折算港币；明细单晚出可回头补填">总付款<br><span class="small">港股·人民币</span></th><th title="仅港股：港币→人民币汇率，留空按该行日期自动获取（ECB参考汇率），可手改成成交单上的实际汇率">汇率<br><span class="small">港股·自动</span></th><th></th></tr><tbody id="grows_'+it.code+'"></tbody></table>'+
    '<button class="addbtn" onclick="gAddRow(\''+it.code+'\')">＋ 加一笔</button>'+
    '<div class="small" style="margin:4px 0">已收到分红 <input class="dps" type="number" step="0.01" value="'+(it.div||0)+'" onchange="gSetDiv(\''+it.code+'\',this.value)"> 元（现金到账后填写，未分红填0）</div>'+
    '<div class="stats">'+
