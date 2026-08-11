@@ -15,7 +15,7 @@ h1 { font-size:27px; letter-spacing:1px; border-bottom:4px solid var(--blue); pa
 .card .k { font-size:13px; color:var(--sub); }
 .card .v { font-size:22px; font-weight:700; margin-top:2px; }
 .card .s { font-size:12.5px; color:var(--sub); }
-.up { color:var(--green); } .dn { color:var(--red); }
+.up { color:var(--red); } .dn { color:var(--green); }
 .sect2 { font-size:20px; margin:26px 0 2px; border-left:4px solid var(--blue); padding-left:10px; }
 .sect2 .small { margin-left:8px; }
 .stock { background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin:14px 0; }
@@ -82,6 +82,17 @@ function jumpStk(code){
  var b=document.getElementById('sbody_'+code);
  if(b&&b.style.display==='none')toggleStk(code);
  var el=document.getElementById('stk_'+code); if(el)el.scrollIntoView({behavior:'smooth'});
+}
+function toggleG(code){
+ var b=document.getElementById('gbody_'+code); if(!b)return;
+ var open=b.style.display!=='none';
+ b.style.display=open?'none':'block';
+ var c=document.getElementById('gcaret_'+code); if(c)c.textContent=open?'▸':'▾';
+}
+function jumpG(code){
+ var b=document.getElementById('gbody_'+code);
+ if(b&&b.style.display==='none')toggleG(code);
+ var el=document.getElementById('gstk_'+code); if(el)el.scrollIntoView({behavior:'smooth'});
 }
 function fmtTs(t){
  if(/^\d{14}$/.test(t))return t.slice(4,6)+'-'+t.slice(6,8)+' '+t.slice(8,10)+':'+t.slice(10,12)+':'+t.slice(12,14);
@@ -161,7 +172,7 @@ function build(){
   var d=document.createElement('div'); d.className='stock'; d.id='stk_'+st.code;
   d.innerHTML='<h3 style="cursor:pointer" onclick="toggleStk(\''+st.code+'\')"><span class="caret" id="scaret_'+st.code+'">▸</span>'+st.name+' <span class="bdg '+z[1]+'" id="z_'+st.code+'">'+z[0]+'</span>'+
    ' <span class="px" id="px_'+st.code+'"></span>'+
-   ' <span class="small">目标'+st.tgt+'%＝'+fmt(alloc(st)/10000,0)+'万 ｜ 已投 <b id="inv_'+st.code+'">—</b> ｜ 现权重 <b id="wt_'+st.code+'">—</b></span></h3>'+
+   ' <span class="small">目标'+st.tgt+'%＝'+fmt(alloc(st)/10000,0)+'万 ｜ 已投 <b id="inv_'+st.code+'">—</b> ｜ 市值 <b id="hmv_'+st.code+'">—</b> ｜ 盈亏 <b id="hpl_'+st.code+'">—</b> ｜ 现权重 <b id="wt_'+st.code+'">—</b></span></h3>'+
    '<div id="sbody_'+st.code+'" style="display:none">'+
    '<div class="sect">买入计划（200万分配 · 挂单价×股数）</div>'+
    '<table class="plantable"><tr><th>档位</th><th>挂单价</th><th>股数</th><th>金额</th></tr><tbody id="plan_'+st.code+'"></tbody></table>'+
@@ -256,9 +267,11 @@ function gBuild(){
  var host=document.getElementById('gstocks'); host.innerHTML='';
  gstate.items.forEach(function(it){
   var d=document.createElement('div'); d.className='stock'; d.id='gstk_'+it.code;
-  d.innerHTML='<h3><span id="gnm_'+it.code+'">'+(it.name||it.code)+'</span> <span class="small">'+it.code+'</span>'+
+  d.innerHTML='<h3 style="cursor:pointer" onclick="toggleG(\''+it.code+'\')"><span class="caret" id="gcaret_'+it.code+'">▸</span><span id="gnm_'+it.code+'">'+(it.name||it.code)+'</span> <span class="small">'+it.code+'</span>'+
    ' <span class="px" id="gpx_'+it.code+'"></span>'+
-   ' <button class="delbtn" style="margin-left:auto" title="移除该标的" onclick="removeItem(\''+it.code+'\')">✕</button></h3>'+
+   ' <span class="small">成本 <b id="gch_'+it.code+'">—</b> ｜ 市值 <b id="gmvh_'+it.code+'">—</b> ｜ 盈亏 <b id="gplh_'+it.code+'">—</b></span>'+
+   ' <button class="delbtn" style="margin-left:auto" title="移除该标的" onclick="event.stopPropagation();removeItem(\''+it.code+'\')">✕</button></h3>'+
+   '<div id="gbody_'+it.code+'" style="display:none">'+
    '<table><tr><th>日期</th><th>买入价</th><th>股数</th><th></th></tr><tbody id="grows_'+it.code+'"></tbody></table>'+
    '<button class="addbtn" onclick="gAddRow(\''+it.code+'\')">＋ 加一笔</button>'+
    '<div class="small" style="margin:4px 0">已收到分红 <input class="dps" type="number" step="0.01" value="'+(it.div||0)+'" onchange="gSetDiv(\''+it.code+'\',this.value)"> 元（现金到账后填写，未分红填0）</div>'+
@@ -271,6 +284,7 @@ function gBuild(){
    '<span>已收分红 <b id="gdv_'+it.code+'">—</b></span>'+
    '<span>息(成本) <b id="gyoc_'+it.code+'">—</b></span>'+
    '<span>总收益含息 <b id="gtot_'+it.code+'">—</b></span>'+
+   '</div>'+
    '</div>';
   host.appendChild(d);
   (it.buys||[]).forEach(function(b){ gAddRow(it.code,b.d,b.p,b.s); });
@@ -292,6 +306,8 @@ function recalcAll(){
   set('avg_'+st.code,avg?fmt(avg,2):'—');
   set('mv_'+st.code,sh?fmt(mv,0):'—');
   var pl=cost?(mv-cost)/cost:null; set('pl_'+st.code,pct(pl),cls(pl));
+  set('hmv_'+st.code,sh?fmt(mv,0):'—');
+  set('hpl_'+st.code,pct(pl),cls(pl));
   set('dv_'+st.code,div?fmt(div,0):'—');
   set('yoc_'+st.code,(div&&cost)?pct0(div/cost):'—');
   var tot=cost?(mv-cost+div)/cost:null; set('tot_'+st.code,div?pct(tot):'—',div?cls(tot):'');
@@ -320,12 +336,15 @@ function recalcAll(){
   set('gavg_'+it.code,avg?fmt(avg,3):'—');
   set('gmv_'+it.code,sh?fmt(mv,0):'—');
   var pl=cost?(mv-cost)/cost:null; set('gpl_'+it.code,pct(pl),cls(pl));
+  set('gch_'+it.code,cost?fmt(cost,0):'—');
+  set('gmvh_'+it.code,sh?fmt(mv,0):'—');
+  set('gplh_'+it.code,pct(pl),cls(pl));
   set('gdv_'+it.code,div?fmt(div,0):'—');
   set('gyoc_'+it.code,(div&&cost)?pct0(div/cost):'—');
   var tot=cost?(mv-cost+div)/cost:null; set('gtot_'+it.code,div?pct(tot):'—',div?cls(tot):'');
   var q=quotes[it.code];
   set('gpx_'+it.code,gfmtP(p)+(q&&q.pc?' <span class="'+cls(p/q.pc-1)+'" style="font-size:13px">'+pct(p/q.pc-1)+'</span>':''));
-  gRows+='<tr onclick="document.getElementById(\'gstk_'+it.code+'\').scrollIntoView({behavior:\'smooth\'})">'+
+  gRows+='<tr onclick="jumpG(\''+it.code+'\')">'+
    '<td><b>'+(it.name||it.code)+'</b> <span class="small">'+it.code+'</span></td><td>'+gfmtP(p)+' / '+(avg?fmt(avg,3):'—')+'</td><td>'+fmt(sh,0)+'</td><td>'+(cost?fmt(cost,0):'—')+'</td><td>'+(sh?fmt(mv,0):'—')+'</td>'+
    '<td class="'+cls(pl)+'">'+(cost?sfmt(mv-cost)+'<br>'+pct(pl):'—')+'</td><td>'+(div?fmt(div,0):'')+'</td><td class="'+cls(tot)+'">'+(div?pct(tot):'')+'</td></tr>';
  });
