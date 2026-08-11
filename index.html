@@ -16,6 +16,7 @@ h1 { font-size:27px; letter-spacing:1px; border-bottom:4px solid var(--blue); pa
 .card .v { font-size:22px; font-weight:700; margin-top:2px; }
 .card .s { font-size:12.5px; color:var(--sub); }
 .up { color:var(--red); } .dn { color:var(--green); }
+.card .s.up { color:var(--red); } .card .s.dn { color:var(--green); }
 .sect2 { font-size:20px; margin:26px 0 2px; border-left:4px solid var(--blue); padding-left:10px; }
 .sect2 .small { margin-left:8px; }
 .stock { background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin:14px 0; }
@@ -185,7 +186,7 @@ function build(){
    '<span>成本 <b id="cost_'+st.code+'">—</b></span>'+
    '<span>均价 <b id="avg_'+st.code+'">—</b></span>'+
    '<span>市值 <b id="mv_'+st.code+'">—</b></span>'+
-   '<span>价差 <b id="pl_'+st.code+'">—</b></span>'+
+   '<span>盈亏 <b id="pl_'+st.code+'">—</b></span>'+
    '<span>已收分红 <b id="dv_'+st.code+'">—</b></span>'+
    '<span>息(成本) <b id="yoc_'+st.code+'">—</b></span>'+
    '<span>总收益含息 <b id="tot_'+st.code+'">—</b></span>'+
@@ -280,7 +281,7 @@ function gBuild(){
    '<span>成本 <b id="gcost_'+it.code+'">—</b></span>'+
    '<span>均价 <b id="gavg_'+it.code+'">—</b></span>'+
    '<span>市值 <b id="gmv_'+it.code+'">—</b></span>'+
-   '<span>价差 <b id="gpl_'+it.code+'">—</b></span>'+
+   '<span>盈亏 <b id="gpl_'+it.code+'">—</b></span>'+
    '<span>已收分红 <b id="gdv_'+it.code+'">—</b></span>'+
    '<span>息(成本) <b id="gyoc_'+it.code+'">—</b></span>'+
    '<span>总收益含息 <b id="gtot_'+it.code+'">—</b></span>'+
@@ -305,9 +306,9 @@ function recalcAll(){
   set('cost_'+st.code,cost?fmt(cost,0):'—');
   set('avg_'+st.code,avg?fmt(avg,2):'—');
   set('mv_'+st.code,sh?fmt(mv,0):'—');
-  var pl=cost?(mv-cost)/cost:null; set('pl_'+st.code,pct(pl),cls(pl));
+  var pl=cost?(mv-cost)/cost:null; set('pl_'+st.code,cost?sfmt(mv-cost)+' '+pct(pl):'—',cls(pl));
   set('hmv_'+st.code,sh?fmt(mv,0):'—');
-  set('hpl_'+st.code,pct(pl),cls(pl));
+  set('hpl_'+st.code,cost?sfmt(mv-cost)+' '+pct(pl):'—',cls(pl));
   set('dv_'+st.code,div?fmt(div,0):'—');
   set('yoc_'+st.code,(div&&cost)?pct0(div/cost):'—');
   var tot=cost?(mv-cost+div)/cost:null; set('tot_'+st.code,div?pct(tot):'—',div?cls(tot):'');
@@ -335,10 +336,10 @@ function recalcAll(){
   set('gcost_'+it.code,cost?fmt(cost,0):'—');
   set('gavg_'+it.code,avg?fmt(avg,3):'—');
   set('gmv_'+it.code,sh?fmt(mv,0):'—');
-  var pl=cost?(mv-cost)/cost:null; set('gpl_'+it.code,pct(pl),cls(pl));
+  var pl=cost?(mv-cost)/cost:null; set('gpl_'+it.code,cost?sfmt(mv-cost)+' '+pct(pl):'—',cls(pl));
   set('gch_'+it.code,cost?fmt(cost,0):'—');
   set('gmvh_'+it.code,sh?fmt(mv,0):'—');
-  set('gplh_'+it.code,pct(pl),cls(pl));
+  set('gplh_'+it.code,cost?sfmt(mv-cost)+' '+pct(pl):'—',cls(pl));
   set('gdv_'+it.code,div?fmt(div,0):'—');
   set('gyoc_'+it.code,(div&&cost)?pct0(div/cost):'—');
   var tot=cost?(mv-cost+div)/cost:null; set('gtot_'+it.code,div?pct(tot):'—',div?cls(tot):'');
@@ -353,7 +354,7 @@ function recalcAll(){
  var totP=poolCost?(poolMv-poolCost+poolDiv)/poolCost:null;
  var plA=allCost?(allMv-allCost)/allCost:null;
  var totA=allCost?(allMv-allCost+allDiv)/allCost:null;
- document.getElementById('poolhead').innerHTML='红利池 <span class="small">目标200万 ｜ 已投 '+(poolCost?fmt(poolCost/10000,1)+'万':'—')+' ｜ 建仓 '+(poolCost?fmt(poolCost/TOTAL*100,1)+'%':'—')+' ｜ 盈亏 <span class="'+cls(plP)+'">'+pct(plP)+'</span></span>';
+ document.getElementById('poolhead').innerHTML='红利池 <span class="small">目标200万 ｜ 已投 '+(poolCost?fmt(poolCost/10000,1)+'万':'—')+' ｜ 建仓 '+(poolCost?fmt(poolCost/TOTAL*100,1)+'%':'—')+' ｜ 盈亏 <span class="'+cls(plP)+'">'+(poolCost?sfmt(poolMv-poolCost)+' '+pct(plP):'—')+'</span></span>';
  var hb='<tr class="grprow" onclick="togglePool()">'+
   '<td><span class="caret">'+(poolExpanded?'▾':'▸')+'</span>红利池 <span class="small" style="font-weight:400">6只组合</span></td>'+
   '<td>—</td><td>6只</td><td>'+(poolCost?fmt(poolCost,0):'—')+'</td><td>'+(poolMv?fmt(poolMv,0):'—')+'</td>'+
@@ -365,7 +366,7 @@ function recalcAll(){
  document.getElementById('sum').innerHTML=
   '<div class="card"><div class="k">总成本</div><div class="v">'+(allCost?fmt(allCost,0):'—')+'</div><div class="s">其中红利池 '+(poolCost?fmt(poolCost/10000,1)+'万':'—')+'</div></div>'+
   '<div class="card"><div class="k">总市值</div><div class="v">'+(allMv?fmt(allMv,0):'—')+'</div></div>'+
-  '<div class="card"><div class="k">盈亏</div><div class="v '+cls(plA)+'">'+pct(plA)+'</div></div>'+
+  '<div class="card"><div class="k">盈亏</div><div class="v '+cls(plA)+'">'+(allCost?sfmt(allMv-allCost):'—')+'</div><div class="s '+cls(plA)+'">'+pct(plA)+'</div></div>'+
   '<div class="card"><div class="k">已收分红</div><div class="v">'+(allDiv?fmt(allDiv,0):'—')+'</div><div class="s">'+(allDiv&&allCost?'息(成本) '+pct0(allDiv/allCost):'现金到账后才计入')+'</div></div>'+
   '<div class="card"><div class="k">总收益含息</div><div class="v '+cls(totA)+'">'+pct(totA)+'</div></div>';
 }
