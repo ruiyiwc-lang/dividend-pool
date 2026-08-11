@@ -35,6 +35,11 @@ input.dps { width:70px; }
 .stats b { font-size:16px; }
 .lines { font-size:13px; color:var(--sub); margin-top:6px; }
 .sect { font-size:13px; color:var(--sub); margin:10px 0 0; }
+.tblwrap { overflow-x:auto; margin:12px 0 2px; background:#fff; border:1px solid var(--line); border-radius:12px; padding:4px 8px; }
+.holdtable td,.holdtable th { white-space:nowrap; }
+.holdtable tbody tr { cursor:pointer; }
+.holdtable tbody tr:hover { background:#f2f6fa; }
+.holdtable .totrow { background:#f6f8fb; font-weight:700; cursor:default; }
 footer { margin-top:34px; padding-top:14px; border-top:1px solid var(--line); font-size:13.5px; color:var(--sub); }
 @media (max-width:640px){ body{font-size:16px} input[type=number]{width:82px} input[type=date]{width:128px} .card .v{font-size:19px} }
 </style></head><body>
@@ -42,6 +47,8 @@ footer { margin-top:34px; padding-top:14px; border-top:1px solid var(--line); fo
 <p class="small">6只：汾20 / 格20 / 平20 / 茅15 / 招15 / 伊10 · 买入计划按200万分（各卡内有分档挂单）· 填入买入日期、价格与股数，自动算市值、价差、分红与总收益 · 数据保存在本浏览器</p>
 <div class="bar"><button onclick="fetchQuotes()">刷新行情</button><span class="small" id="qtime">行情：加载中…</span></div>
 <div class="cards" id="sum"></div>
+<div class="tblwrap"><table class="holdtable"><thead><tr><th>名称</th><th>现价</th><th>持仓数量</th><th>成本均价</th><th>成本</th><th>盈亏</th><th>年分红</th><th>总收益含息</th></tr></thead><tbody id="holdbody"></tbody></table></div>
+<div class="small" style="margin:2px 0 6px">点任意一行可跳到该股票明细卡。</div>
 <div id="stocks"></div>
 <footer>口径：分红=股数×FY25每股分红（可在各卡内修改DPS）；股息率(成本)=DPS÷平均成本；总收益=(市值−成本+一年分红)÷成本；权重=市值占比 vs 目标权重。买入计划=200万×目标权重，分档股数与挂单价来自终版报告（①首笔/②加仓/③恐慌，另留备用金）；「可挂」=现价已≤挂单价。三线来自终版报告（大底/买/卖）。行情源：腾讯qt.gtimg.cn，延迟以页面时间戳为准。个人研究记录，非投资建议。</footer>
 <script>
@@ -115,7 +122,7 @@ function build(){
  var host=document.getElementById('stocks'); host.innerHTML='';
  STOCKS.forEach(function(st){
   var z=zone(st);
-  var d=document.createElement('div'); d.className='stock';
+  var d=document.createElement('div'); d.className='stock'; d.id='stk_'+st.code;
   d.innerHTML='<h3>'+st.name+' <span class="bdg '+z[1]+'" id="z_'+st.code+'">'+z[0]+'</span>'+
    ' <span class="px" id="px_'+st.code+'"></span>'+
    ' <span class="small">目标'+st.tgt+'%＝'+fmt(alloc(st)/10000,0)+'万 ｜ 已投 <b id="inv_'+st.code+'">—</b> ｜ 现权重 <b id="wt_'+st.code+'">—</b></span></h3>'+
@@ -141,7 +148,7 @@ function build(){
  });
 }
 function recalc(){
- var totCost=0,totMv=0,totDiv=0,per={};
+ var totCost=0,totMv=0,totDiv=0,per={},hb='';
  STOCKS.forEach(function(st){
   var p=price(st),sh=0,cost=0;
   (state.buys[st.code]||[]).forEach(function(b){ sh+=b.s; cost+=b.p*b.s; });
@@ -162,6 +169,9 @@ function recalc(){
   var z=zone(st); set('z_'+st.code,z[0],'bdg '+z[1]);
   var pb=document.getElementById('plan_'+st.code); if(pb) pb.innerHTML=planRows(st);
   set('ln_'+st.code,'三线：底 '+fmt(st.five[0],1)+' ｜ 买 '+fmt(st.five[1],1)+' ｜ 卖 '+fmt(st.five[2],1)+(p?' · 距卖出线 '+pct(st.five[2]/p-1):''));
+  hb+='<tr onclick="document.getElementById(\'stk_'+st.code+'\').scrollIntoView({behavior:\'smooth\'})">'+
+   '<td><b>'+st.name+'</b></td><td>'+fmt(p,2)+'</td><td>'+fmt(sh,0)+'</td><td>'+(avg?fmt(avg,2):'—')+'</td><td>'+(cost?fmt(cost,0):'—')+'</td>'+
+   '<td class="'+cls(pl)+'">'+pct(pl)+'</td><td>'+(sh?fmt(div,0):'—')+'</td><td class="'+cls(tot)+'">'+pct(tot)+'</td></tr>';
  });
  STOCKS.forEach(function(st){
   var el=document.getElementById('wt_'+st.code);
@@ -169,6 +179,8 @@ function recalc(){
  });
  var plT=totCost?(totMv-totCost)/totCost:null;
  var totT=totCost?(totMv-totCost+totDiv)/totCost:null;
+ hb+='<tr class="totrow"><td>合计</td><td>—</td><td>—</td><td>—</td><td>'+(totCost?fmt(totCost,0):'—')+'</td><td class="'+cls(plT)+'">'+pct(plT)+'</td><td>'+(totDiv?fmt(totDiv,0):'—')+'</td><td class="'+cls(totT)+'">'+pct(totT)+'</td></tr>';
+ document.getElementById('holdbody').innerHTML=hb;
  document.getElementById('sum').innerHTML=
   '<div class="card"><div class="k">已投入 / 目标</div><div class="v">'+(totCost?fmt(totCost/10000,1)+'万':'—')+'</div><div class="s">目标 200万 · 建仓 '+(totCost?fmt(totCost/TOTAL*100,1)+'%':'—')+'</div></div>'+
   '<div class="card"><div class="k">总市值</div><div class="v">'+(totMv?fmt(totMv/10000,1)+'万':'—')+'</div></div>'+
