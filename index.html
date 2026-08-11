@@ -9,7 +9,6 @@ h1 { font-size:27px; letter-spacing:1px; border-bottom:4px solid var(--blue); pa
 .small { font-size:13.5px; color:#667; }
 .bar { display:flex; align-items:center; gap:10px; margin:12px 0; flex-wrap:wrap; }
 .bar button { background:var(--blue); color:#fff; border:0; border-radius:8px; padding:7px 16px; font-size:15px; cursor:pointer; }
-.bar button.ghost { background:#eef1f5; color:var(--ink); border:1px solid var(--line); }
 .bar input { padding:7px 10px; border:1px solid var(--line); border-radius:8px; font-size:15px; width:240px; }
 .cards { display:flex; gap:10px; flex-wrap:wrap; margin:10px 0 4px; }
 .card { flex:1 1 150px; background:#fff; border:1px solid var(--line); border-radius:10px; padding:10px 14px; }
@@ -53,7 +52,7 @@ footer { margin-top:34px; padding-top:14px; border-top:1px solid var(--line); fo
 </style></head><body>
 <h1>持仓 · 在线收益表</h1>
 <p class="small">总表按「红利池 / 其他持仓」分组：红利池合并为一行、点开展开6只明细；其他标的（如医药ETF、阿里巴巴）与红利池同级 · 数据保存在本浏览器</p>
-<div class="bar"><input id="newcode" placeholder="添加标的 如 512010 / hk09988" onkeydown="if(event.key==='Enter')tryAdd()"><button onclick="tryAdd()">添加标的</button><button class="ghost" onclick="fetchQuotes()">刷新行情</button><span class="small" id="qtime">行情：加载中…</span></div>
+<div class="bar"><input id="newcode" placeholder="添加标的 如 512010 / hk09988" onkeydown="if(event.key==='Enter')tryAdd()"><button onclick="tryAdd()">添加标的</button><button onclick="fetchQuotes()">刷新行情</button><span class="small" id="qtime">行情：加载中…</span></div>
 <div class="cards" id="sum"></div>
 <div class="tblwrap"><table class="holdtable"><thead><tr><th>名称</th><th>现价</th><th>持仓数量</th><th>成本</th><th>市值</th><th>盈亏</th><th>年分红</th><th>总收益含息</th></tr></thead><tbody id="holdbody"></tbody></table></div>
 <div class="small" style="margin:2px 0 6px">点「红利池」行展开/收起个股；点个股或单只标的行跳到明细卡。</div>
