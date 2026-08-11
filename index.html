@@ -72,6 +72,12 @@ function pct(n){ if(n==null||isNaN(n)||!isFinite(n))return '—'; return (n>=0?'
 function pct0(n){ if(n==null||isNaN(n)||!isFinite(n))return '—'; return (n*100).toFixed(2)+'%'; }
 function cls(n){ if(n==null||isNaN(n)||!isFinite(n))return ''; return n>=0?'up':'dn'; }
 function togglePool(){ poolExpanded=!poolExpanded; recalcAll(); }
+function fmtTs(t){
+ if(/^\d{14}$/.test(t))return t.slice(4,6)+'-'+t.slice(6,8)+' '+t.slice(8,10)+':'+t.slice(10,12)+':'+t.slice(12,14);
+ var m=(t||'').match(/(\d{4})[\/\-](\d{2})[\/\-](\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
+ if(m)return m[2]+'-'+m[3]+' '+m[4]+':'+m[5]+':'+m[6];
+ return '';
+}
 /* ---------- 红利池 ---------- */
 var TOTAL=2000000;
 var STOCKS=[
@@ -174,10 +180,11 @@ function gitem(code){ for(var i=0;i<gstate.items.length;i++)if(gstate.items[i].c
 function gprice(it){ var q=quotes[it.code]; if(q)return q.p; var b=it.buys||[]; return b.length?b[b.length-1].p:NaN; }
 function gfmtP(p){ return isNaN(p)?'—':fmt(p,p<10?3:2); }
 function normCode(v){
- v=(v||'').trim().toLowerCase();
- if(/^(sh|sz|hk)\d{5}$/.test(v))return v;
- if(/^us[a-z.\-]{1,6}$/.test(v))return v;
- if(/^\d{6}$/.test(v)){ if(v[0]==='6')return 'sh'+v; if(v[0]==='0'||v[0]==='1'||v[0]==='3')return 'sz'+v; }
+ v=(v||'').trim();
+ var lv=v.toLowerCase();
+ if(/^(sh|sz|hk)\d{5}$/.test(lv))return lv;
+ if(/^us[a-z.\-]{1,6}$/i.test(lv))return 'us'+v.slice(2).toUpperCase();
+ if(/^\d{6}$/.test(lv)){ if(lv[0]==='6'||lv[0]==='5'||lv[0]==='9')return 'sh'+lv; if(lv[0]==='0'||lv[0]==='1'||lv[0]==='2'||lv[0]==='3')return 'sz'+lv; }
  return '';
 }
 function tryAdd(){
@@ -331,10 +338,10 @@ function fetchQuotes(){
   STOCKS.concat(gstate.items).forEach(function(s){
    var v=window['v_'+s.code]; if(!v)return;
    var f=v.split('~');
-   if(f.length>30&&parseFloat(f[3])>0){ quotes[s.code]={p:parseFloat(f[3]),pc:parseFloat(f[4])}; ts=f[30]; }
+   if(f.length>30&&parseFloat(f[3])>0){ quotes[s.code]={p:parseFloat(f[3]),pc:parseFloat(f[4])}; var ft=fmtTs(f[30]||''); if(ft)ts=ft; }
    if(f.length>1&&f[1]&&!s.name){ s.name=f[1]; var nm=document.getElementById('gnm_'+s.code); if(nm)nm.textContent=s.name; gsave(); }
   });
-  document.getElementById('qtime').textContent = ts ? '行情时间：'+ts.slice(4,6)+'-'+ts.slice(6,8)+' '+ts.slice(8,10)+':'+ts.slice(10,12)+':'+ts.slice(12,14) : '行情：获取失败，红利池用8/10收盘价兜底';
+  document.getElementById('qtime').textContent = ts ? '行情时间：'+ts : '行情：获取失败，红利池用8/10收盘价兜底';
   recalcAll();
  };
  sc.onerror=function(){ document.getElementById('qtime').textContent='行情：获取失败，红利池用8/10收盘价兜底'; recalcAll(); };
