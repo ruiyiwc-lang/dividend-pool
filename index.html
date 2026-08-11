@@ -19,40 +19,52 @@ h1 { font-size:27px; letter-spacing:1px; border-bottom:4px solid var(--blue); pa
 .stock h3 { font-size:19px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 .bdg { display:inline-block; padding:2px 9px; border-radius:12px; font-size:12.5px; font-weight:600; white-space:nowrap; }
 .bred { background:#fdecea; color:#c0392b; } .bamber { background:#fff4e0; color:#b06a00; } .bgray { background:#f0f0f2; color:#666; }
+.bdgok { display:inline-block; padding:1px 7px; border-radius:10px; font-size:12px; font-weight:600; background:#e8f5ee; color:#1e7d4f; white-space:nowrap; }
 .px { font-size:16px; font-weight:700; }
-table { width:100%; border-collapse:collapse; margin:8px 0 4px; font-size:14.5px; }
+table { width:100%; border-collapse:collapse; margin:6px 0 4px; font-size:14.5px; }
 th { background:#eef1f5; padding:6px; text-align:left; font-size:13px; }
 td { padding:5px 6px; border-bottom:1px solid var(--line); }
-input[type=number] { width:96px; padding:6px 8px; border:1px solid var(--line); border-radius:6px; font-size:15px; }
+.plantable td { padding:3px 6px; font-size:13.5px; }
+input[type=number],input[type=date] { padding:6px 8px; border:1px solid var(--line); border-radius:6px; font-size:15px; }
+input[type=number] { width:96px; }
+input[type=date] { width:142px; }
 input.dps { width:70px; }
 .addbtn { background:#eef1f5; border:1px dashed #b9c2cf; border-radius:8px; padding:5px 14px; font-size:14px; cursor:pointer; margin:6px 0; }
 .delbtn { background:none; border:0; color:#b0b7c3; font-size:16px; cursor:pointer; }
 .stats { display:flex; flex-wrap:wrap; gap:6px 22px; margin:8px 0 2px; font-size:14.5px; }
 .stats b { font-size:16px; }
 .lines { font-size:13px; color:var(--sub); margin-top:6px; }
+.sect { font-size:13px; color:var(--sub); margin:10px 0 0; }
 footer { margin-top:34px; padding-top:14px; border-top:1px solid var(--line); font-size:13.5px; color:var(--sub); }
-@media (max-width:640px){ body{font-size:16px} input[type=number]{width:82px} .card .v{font-size:19px} }
+@media (max-width:640px){ body{font-size:16px} input[type=number]{width:82px} input[type=date]{width:128px} .card .v{font-size:19px} }
 </style></head><body>
 <h1>红利池 · 在线收益表</h1>
-<p class="small">6只：汾20 / 格20 / 平20 / 茅15 / 招15 / 伊10 · 填入买入价与股数，自动算市值、价差、分红与总收益 · 数据保存在本浏览器</p>
+<p class="small">6只：汾20 / 格20 / 平20 / 茅15 / 招15 / 伊10 · 买入计划按200万分（各卡内有分档挂单）· 填入买入日期、价格与股数，自动算市值、价差、分红与总收益 · 数据保存在本浏览器</p>
 <div class="bar"><button onclick="fetchQuotes()">刷新行情</button><span class="small" id="qtime">行情：加载中…</span></div>
 <div class="cards" id="sum"></div>
 <div id="stocks"></div>
-<footer>口径：分红=股数×FY25每股分红（可在各卡内修改DPS）；股息率(成本)=DPS÷平均成本；总收益=(市值−成本+一年分红)÷成本；权重=市值占比 vs 目标权重。三线来自终版报告（大底/买/卖）。行情源：腾讯qt.gtimg.cn，延迟以页面时间戳为准。个人研究记录，非投资建议。</footer>
+<footer>口径：分红=股数×FY25每股分红（可在各卡内修改DPS）；股息率(成本)=DPS÷平均成本；总收益=(市值−成本+一年分红)÷成本；权重=市值占比 vs 目标权重。买入计划=200万×目标权重，分档股数与挂单价来自终版报告（①首笔/②加仓/③恐慌，另留备用金）；「可挂」=现价已≤挂单价。三线来自终版报告（大底/买/卖）。行情源：腾讯qt.gtimg.cn，延迟以页面时间戳为准。个人研究记录，非投资建议。</footer>
 <script>
+var TOTAL=2000000;
 var STOCKS=[
- {code:'sh600809',name:'山西汾酒',tgt:20,dps:6.56,five:[122.1,174.4,242.2],fb:123.26},
- {code:'sz000651',name:'格力电器',tgt:20,dps:3.00,five:[33.2,47.4,86.1],fb:40.57},
- {code:'sh601318',name:'中国平安',tgt:20,dps:2.70,five:[48.1,68.7,105.6],fb:53.30},
- {code:'sh600519',name:'贵州茅台',tgt:15,dps:51.98,five:[982,1511,2061],fb:1347.70},
- {code:'sh600036',name:'招商银行',tgt:15,dps:2.016,five:[28.8,41.2,74.4],fb:38.97},
- {code:'sh600887',name:'伊利股份',tgt:10,dps:1.38,five:[18.3,26.2,34.9],fb:26.25}
+ {code:'sh600809',name:'山西汾酒',tgt:20,dps:6.56,five:[122.1,174.4,242.2],fb:123.26,reserve:1,
+  plan:[{t:'①',p:120,s:900},{t:'①',p:116,s:800},{t:'①',p:110,s:700},{t:'②',p:101,s:800},{t:'③',p:90,s:400}]},
+ {code:'sz000651',name:'格力电器',tgt:20,dps:3.00,five:[33.2,47.4,86.1],fb:40.57,reserve:30,
+  plan:[{t:'①',p:40.2,s:2000,label:'39.8–40.6'},{t:'②',p:37.0,s:2600},{t:'③',p:33.2,s:3100}]},
+ {code:'sh601318',name:'中国平安',tgt:20,dps:2.70,five:[48.1,68.7,105.6],fb:53.30,reserve:29,
+  plan:[{t:'①',p:53.25,s:1500,label:'53.0–53.5'},{t:'②',p:51.7,s:2000},{t:'③',p:48.1,s:2100}]},
+ {code:'sh600519',name:'贵州茅台',tgt:15,dps:51.98,five:[982,1511,2061],fb:1347.70,reserve:20,
+  plan:[{t:'①',p:1308,s:100,label:'1300–1315'},{t:'②',p:1080,s:100,label:'≤1080'}]},
+ {code:'sh600036',name:'招商银行',tgt:15,dps:2.016,five:[28.8,41.2,74.4],fb:38.97,reserve:30,
+  plan:[{t:'①',p:38.9,s:1500,label:'38.5–39.2'},{t:'②',p:35.8,s:2100},{t:'③',p:29.0,s:2600}]},
+ {code:'sh600887',name:'伊利股份',tgt:10,dps:1.38,five:[18.3,26.2,34.9],fb:26.25,reserve:31,
+  plan:[{t:'①',p:26.2,s:1500,label:'26.0–26.5'},{t:'②',p:24.8,s:2000},{t:'③',p:19.0,s:2600}]}
 ];
 var DEMO=location.search.indexOf('demo')>=0;
 var state={buys:{},dps:{}};
 if(!DEMO){ try{var sv=localStorage.getItem('divpool_v1');if(sv)state=JSON.parse(sv);}catch(e){} }
 STOCKS.forEach(function(st){ if(!state.buys[st.code])state.buys[st.code]=[]; if(!state.dps[st.code])state.dps[st.code]=st.dps; });
-if(DEMO){ state.buys={ sh600809:[{p:120,s:900},{p:116,s:800}], sz000651:[{p:40.2,s:2000}], sh601318:[{p:53.2,s:1500}], sh600519:[{p:1308,s:100}], sh600036:[{p:38.9,s:1500}], sh600887:[{p:26.2,s:1500}] }; }
+if(DEMO){ state.buys={ sh600809:[{d:'2026-08-11',p:120,s:900},{d:'2026-08-11',p:116,s:800}], sz000651:[{d:'2026-08-11',p:40.2,s:2000}], sh601318:[{d:'2026-08-11',p:53.2,s:1500}], sh600519:[{d:'2026-08-11',p:1308,s:100}], sh600036:[{d:'2026-08-11',p:38.9,s:1500}], sh600887:[{d:'2026-08-11',p:26.2,s:1500}] }; }
 var quotes={};
 function save(){ if(DEMO)return; try{localStorage.setItem('divpool_v1',JSON.stringify(state));}catch(e){} }
 function fmt(n,d){ if(n==null||isNaN(n))return '—'; var dd=(d==null?2:d); return n.toLocaleString('zh-CN',{minimumFractionDigits:dd,maximumFractionDigits:dd}); }
@@ -61,31 +73,44 @@ function pct0(n){ if(n==null||isNaN(n)||!isFinite(n))return '—'; return (n*100
 function cls(n){ if(n==null||isNaN(n)||!isFinite(n))return ''; return n>=0?'up':'dn'; }
 function price(st){ var q=quotes[st.code]; return q?q.p:st.fb; }
 function zone(st){ var p=price(st); if(p<=st.five[0])return['大底区','bred']; if(p<=st.five[1])return['买入区','bamber']; return['不建仓区','bgray']; }
+function alloc(st){ return TOTAL*st.tgt/100; }
+function planSum(st){ var a=0; st.plan.forEach(function(o){a+=o.p*o.s;}); return a; }
 function rowsOf(code){ return Array.prototype.slice.call(document.getElementById('rows_'+code).children); }
 function syncFromDOM(code){
  var arr=[];
  rowsOf(code).forEach(function(tr){
   var ins=tr.querySelectorAll('input');
-  var p=parseFloat(ins[0].value), s=parseFloat(ins[1].value);
-  if(!(isNaN(p))&&!(isNaN(s))&&s>0) arr.push({p:p,s:s});
+  var d=ins[0].value, p=parseFloat(ins[1].value), s=parseFloat(ins[2].value);
+  if(!(isNaN(p))&&!(isNaN(s))&&s>0) arr.push({d:d||'',p:p,s:s});
  });
  state.buys[code]=arr; save();
 }
-function addRow(code,p,s){
+function addRow(code,d,p,s){
  var host=document.getElementById('rows_'+code);
  var tr=document.createElement('tr');
- tr.innerHTML='<td><input type="number" step="0.01" inputmode="decimal" placeholder="价格" value="'+(p!=null?p:'')+'"></td>'+
+ tr.innerHTML='<td><input type="date" value="'+(d||'')+'"></td>'+
+  '<td><input type="number" step="0.01" inputmode="decimal" placeholder="价格" value="'+(p!=null?p:'')+'"></td>'+
   '<td><input type="number" step="100" inputmode="numeric" placeholder="股数" value="'+(s!=null?s:'')+'"></td>'+
   '<td><button class="delbtn" title="删除这笔">✕</button></td>';
  var ins=tr.querySelectorAll('input');
- ins[0].oninput=function(){ syncFromDOM(code); recalc(); };
+ ins[0].onchange=function(){ syncFromDOM(code); };
  ins[1].oninput=function(){ syncFromDOM(code); recalc(); };
+ ins[2].oninput=function(){ syncFromDOM(code); recalc(); };
  tr.querySelector('.delbtn').onclick=function(){ tr.remove(); syncFromDOM(code); recalc(); };
  host.appendChild(tr);
  if(p!=null) { syncFromDOM(code); }
  recalc();
 }
 function setDps(code,v){ state.dps[code]=parseFloat(v)||0; save(); recalc(); }
+function planRows(st){
+ var html='';
+ st.plan.forEach(function(o){
+  var ok=price(st)<=o.p;
+  html+='<tr><td>'+o.t+'</td><td>'+(o.label||fmt(o.p,2))+(ok?' <span class="bdgok">可挂</span>':'')+'</td><td>'+fmt(o.s,0)+'</td><td>'+fmt(o.p*o.s,0)+'</td></tr>';
+ });
+ html+='<tr><td>备用</td><td>—</td><td>—</td><td>'+fmt(alloc(st)*st.reserve/100,0)+'（'+st.reserve+'%）</td></tr>';
+ return html;
+}
 function build(){
  var host=document.getElementById('stocks'); host.innerHTML='';
  STOCKS.forEach(function(st){
@@ -93,9 +118,12 @@ function build(){
   var d=document.createElement('div'); d.className='stock';
   d.innerHTML='<h3>'+st.name+' <span class="bdg '+z[1]+'" id="z_'+st.code+'">'+z[0]+'</span>'+
    ' <span class="px" id="px_'+st.code+'"></span>'+
-   ' <span class="small">目标'+st.tgt+'% · 现权重 <b id="wt_'+st.code+'">—</b></span></h3>'+
-   '<table><tr><th>买入价</th><th>股数</th><th></th></tr></table>'+
-   '<div id="rows_'+st.code+'"></div><button class="addbtn" onclick="addRow(\''+st.code+'\')">＋ 加一笔</button>'+
+   ' <span class="small">目标'+st.tgt+'%＝'+fmt(alloc(st)/10000,0)+'万 ｜ 已投 <b id="inv_'+st.code+'">—</b> ｜ 现权重 <b id="wt_'+st.code+'">—</b></span></h3>'+
+   '<div class="sect">买入计划（200万分配 · 挂单价×股数）</div>'+
+   '<table class="plantable"><tr><th>档位</th><th>挂单价</th><th>股数</th><th>金额</th></tr><tbody id="plan_'+st.code+'"></tbody></table>'+
+   '<div class="sect">实际买入记录</div>'+
+   '<table><tr><th>日期</th><th>买入价</th><th>股数</th><th></th></tr><tbody id="rows_'+st.code+'"></tbody></table>'+
+   '<button class="addbtn" onclick="addRow(\''+st.code+'\')">＋ 加一笔</button>'+
    '<div class="small" style="margin:4px 0">FY25每股分红 <input class="dps" type="number" step="0.01" value="'+state.dps[st.code]+'" onchange="setDps(\''+st.code+'\',this.value)"> 元/股</div>'+
    '<div class="stats">'+
    '<span>持股 <b id="sh_'+st.code+'">0</b></span>'+
@@ -109,7 +137,7 @@ function build(){
    '</div>'+
    '<div class="lines" id="ln_'+st.code+'"></div>';
   host.appendChild(d);
-  (state.buys[st.code]||[]).forEach(function(b){ addRow(st.code,b.p,b.s); });
+  (state.buys[st.code]||[]).forEach(function(b){ addRow(st.code,b.d,b.p,b.s); });
  });
 }
 function recalc(){
@@ -118,9 +146,10 @@ function recalc(){
   var p=price(st),sh=0,cost=0;
   (state.buys[st.code]||[]).forEach(function(b){ sh+=b.s; cost+=b.p*b.s; });
   var mv=sh*p, div=sh*(state.dps[st.code]||0), avg=sh?cost/sh:null;
-  per[st.code]={mv:mv}; totCost+=cost; totMv+=mv; totDiv+=div;
+  per[st.code]={mv:mv,cost:cost}; totCost+=cost; totMv+=mv; totDiv+=div;
   function set(id,html,c){ var el=document.getElementById(id); if(!el)return; el.innerHTML=html; if(c!==undefined)el.className=c; }
   set('sh_'+st.code,fmt(sh,0));
+  set('inv_'+st.code,cost?fmt(cost/10000,1)+'万':'—');
   set('cost_'+st.code,cost?fmt(cost,0):'—');
   set('avg_'+st.code,avg?fmt(avg,2):'—');
   set('mv_'+st.code,sh?fmt(mv,0):'—');
@@ -131,6 +160,7 @@ function recalc(){
   var q=quotes[st.code];
   set('px_'+st.code,fmt(p,2)+(q&&q.pc?' <span class="'+cls(p/q.pc-1)+'" style="font-size:13px">'+pct(p/q.pc-1)+'</span>':''));
   var z=zone(st); set('z_'+st.code,z[0],'bdg '+z[1]);
+  var pb=document.getElementById('plan_'+st.code); if(pb) pb.innerHTML=planRows(st);
   set('ln_'+st.code,'三线：底 '+fmt(st.five[0],1)+' ｜ 买 '+fmt(st.five[1],1)+' ｜ 卖 '+fmt(st.five[2],1)+(p?' · 距卖出线 '+pct(st.five[2]/p-1):''));
  });
  STOCKS.forEach(function(st){
@@ -140,8 +170,8 @@ function recalc(){
  var plT=totCost?(totMv-totCost)/totCost:null;
  var totT=totCost?(totMv-totCost+totDiv)/totCost:null;
  document.getElementById('sum').innerHTML=
-  '<div class="card"><div class="k">总成本</div><div class="v">'+(totCost?fmt(totCost,0):'—')+'</div></div>'+
-  '<div class="card"><div class="k">总市值</div><div class="v">'+(totMv?fmt(totMv,0):'—')+'</div></div>'+
+  '<div class="card"><div class="k">已投入 / 目标</div><div class="v">'+(totCost?fmt(totCost/10000,1)+'万':'—')+'</div><div class="s">目标 200万 · 建仓 '+(totCost?fmt(totCost/TOTAL*100,1)+'%':'—')+'</div></div>'+
+  '<div class="card"><div class="k">总市值</div><div class="v">'+(totMv?fmt(totMv/10000,1)+'万':'—')+'</div></div>'+
   '<div class="card"><div class="k">价差</div><div class="v '+cls(plT)+'">'+pct(plT)+'</div></div>'+
   '<div class="card"><div class="k">年分红(FY25)</div><div class="v">'+(totDiv?fmt(totDiv,0):'—')+'</div><div class="s">息(成本) '+(totCost?pct0(totDiv/totCost):'—')+'</div></div>'+
   '<div class="card"><div class="k">总收益含一年息</div><div class="v '+cls(totT)+'">'+pct(totT)+'</div></div>';
