@@ -60,7 +60,7 @@ footer { margin-top:34px; padding-top:14px; border-top:1px solid var(--line); fo
 <div id="stocks"></div>
 <h2 class="sect2">其他持仓</h2>
 <div id="gstocks"></div>
-<footer>口径：分红=实际到账的现金分红（派息到账后在卡内填写金额，未分红填0、不计入）；息(成本)=已收分红÷成本；总收益含息=(市值−成本+已收分红)÷成本；红利池现权重=池内市值占比 vs 目标权重。买入计划=200万×目标权重，分档股数与挂单价来自终版报告（①首笔/②加仓/恐慌，另留备用金）；「可挂」=现价已≤挂单价。三线来自终版报告（大底/买/卖）。行情源：腾讯qt.gtimg.cn，延迟以页面时间戳为准；无行情的标的暂以最近一笔买入价计。个人研究记录，非投资建议。</footer>
+<footer>口径：分红=实际到账的现金分红（派息到账后在卡内填写金额，未分红填0、不计入）；息(成本)=已收分红÷成本；总收益含息=(市值−成本+已收分红)÷成本；红利池现权重=池内市值占比 vs 目标权重。买入计划=200万×目标权重，分档股数与挂单价来自终版报告（①首笔/②加仓/恐慌，另留备用金）；「可挂」=现价已≤挂单价。三线来自终版报告（大底/买/卖）。行情源：A股/ETF用腾讯qt.gtimg.cn，港股/美股用东方财富实时行情，东财不可用时回退腾讯（港股延迟约15分钟）；无行情的标的暂以最近一笔买入价计。个人研究记录，非投资建议。</footer>
 <script>
 /* ---------- 公共 ---------- */
 var DEMO=location.search.indexOf('demo')>=0;
@@ -370,23 +370,50 @@ function recalcAll(){
   '<div class="card"><div class="k">总收益含息</div><div class="v '+cls(totA)+'">'+pct(totA)+'</div></div>';
 }
 /* ---------- 行情 ---------- */
+function fmtEpoch(s){ if(!s)return ''; var d=new Date(s*1000); function z(n){return n<10?'0'+n:''+n;} return z(d.getMonth()+1)+'-'+z(d.getDate())+' '+z(d.getHours())+':'+z(d.getMinutes())+':'+z(d.getSeconds()); }
+function emFetch(secid){ return fetch('https://push2.eastmoney.com/api/qt/stock/get?secid='+secid+'&fltt=2&invt=2&fields=f43,f58,f60,f86').then(function(r){return r.json();}); }
+function loadEM(code,cb){
+ var tail=code.slice(2);
+ var secids=code.indexOf('hk')===0?['116.'+tail]:['105.'+tail,'106.'+tail,'107.'+tail];
+ secids.reduce(function(p,s){ return p.then(function(v){ if(v&&v.data&&v.data.f43!=null)return v; return emFetch(s).catch(function(){return null;}); }); }, Promise.resolve(null))
+ .then(function(v){ cb(v&&v.data?v.data:null); });
+}
 function fetchQuotes(){
  document.getElementById('qtime').textContent='行情：加载中…';
- var codes=STOCKS.map(function(s){return s.code;}).concat(gstate.items.map(function(x){return x.code;})).join(',');
- var sc=document.createElement('script');
- sc.src='https://qt.gtimg.cn/q='+codes+'&t='+Date.now();
- sc.onload=function(){
-  var ts='';
-  STOCKS.concat(gstate.items).forEach(function(s){
-   var v=window['v_'+s.code]; if(!v)return;
-   var f=v.split('~');
-   if(f.length>30&&parseFloat(f[3])>0){ quotes[s.code]={p:parseFloat(f[3]),pc:parseFloat(f[4])}; var ft=fmtTs(f[30]||''); if(ft)ts=ft; }
-   if(f.length>1&&f[1]&&!s.name){ s.name=f[1]; var nm=document.getElementById('gnm_'+s.code); if(nm)nm.textContent=s.name; gsave(); }
-  });
-  document.getElementById('qtime').textContent = ts ? '行情时间：'+ts : '行情：获取失败，红利池用8/10收盘价兜底';
+ var all=STOCKS.map(function(s){return s.code;}).concat(gstate.items.map(function(x){return x.code;}));
+ var oCodes=all.filter(function(c){return c.indexOf('hk')===0||c.indexOf('us')===0;});
+ var ts='',emTs='';
+ function findItem(code){ for(var i=0;i<gstate.items.length;i++)if(gstate.items[i].code===code)return gstate.items[i]; return null; }
+ function applyName(code,name){ var it=findItem(code); if(it&&!it.name){ it.name=name; var nm=document.getElementById('gnm_'+code); if(nm)nm.textContent=name; gsave(); } }
+ function tencentFill(code){
+  var v=window['v_'+code]; if(!v)return;
+  var f=v.split('~');
+  if(f.length>30&&parseFloat(f[3])>0){ quotes[code]={p:parseFloat(f[3]),pc:parseFloat(f[4])}; var ft=fmtTs(f[30]||''); if(ft)ts=ft; }
+  if(f.length>1&&f[1])applyName(code,f[1]);
+ }
+ function done(){
+  oCodes.forEach(function(c){ if(!quotes[c])tencentFill(c); });
+  var t=emTs||ts;
+  document.getElementById('qtime').textContent = t ? '行情时间：'+t : '行情：获取失败，红利池用8/10收盘价兜底';
   recalcAll();
+ }
+ var wait=2; function tick(){ if(--wait<=0)done(); }
+ if(oCodes.length){
+  var left=oCodes.length;
+  oCodes.forEach(function(code){
+   loadEM(code,function(d){
+    if(d&&d.f43!=null){ quotes[code]={p:d.f43,pc:d.f60}; var ft=fmtEpoch(d.f86); if(ft)emTs=ft; if(d.f58)applyName(code,d.f58); }
+    if(--left<=0)tick();
+   });
+  });
+ } else tick();
+ var sc=document.createElement('script');
+ sc.src='https://qt.gtimg.cn/q='+all.join(',')+'&t='+Date.now();
+ sc.onload=function(){
+  all.forEach(function(code){ if(code.indexOf('hk')!==0&&code.indexOf('us')!==0)tencentFill(code); });
+  tick();
  };
- sc.onerror=function(){ document.getElementById('qtime').textContent='行情：获取失败，红利池用8/10收盘价兜底'; recalcAll(); };
+ sc.onerror=function(){ tick(); };
  document.body.appendChild(sc);
 }
 build(); gBuild(); recalcAll(); fetchQuotes();
