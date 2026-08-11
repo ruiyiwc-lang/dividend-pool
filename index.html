@@ -53,7 +53,7 @@ footer { margin-top:34px; padding-top:14px; border-top:1px solid var(--line); fo
 </style></head><body>
 <h1>持仓 · 在线收益表</h1>
 <p class="small">总表按「红利池 / 其他持仓」分组：红利池合并为一行、点开展开6只明细；其他标的（如医药ETF、阿里巴巴）与红利池同级 · 数据保存在本浏览器</p>
-<div class="bar"><input id="newcode" placeholder="添加标的 如 512010 / hk09988" onkeydown="if(event.key==='Enter')tryAdd()"><button onclick="tryAdd()">添加标的</button><button onclick="fetchQuotes()">刷新行情</button><span class="small" id="qtime">行情：加载中…</span></div>
+<div class="bar"><input id="newcode" placeholder="添加标的 如 512010 / hk09988" onkeydown="if(event.key==='Enter')tryAdd()"><button onclick="tryAdd()">添加标的</button><button onclick="fetchQuotes()">刷新行情</button><button onclick="backupData()">备份</button><button onclick="restoreData()">恢复</button><span class="small" id="qtime">行情：加载中…</span></div>
 <div class="cards" id="sum"></div>
 <div class="tblwrap"><table class="holdtable"><thead><tr><th>名称</th><th>现价/成本价</th><th>持仓数量</th><th>成本</th><th>市值</th><th>盈亏</th><th>已收分红</th><th>总收益含息</th></tr></thead><tbody id="holdbody"></tbody></table></div>
 <div class="small" style="margin:2px 0 6px">点「红利池」行展开/收起个股；点个股行跳到明细卡并自动展开，点卡片标题可再收起。</div>
@@ -369,6 +369,24 @@ function recalcAll(){
   '<div class="card"><div class="k">盈亏</div><div class="v '+cls(plA)+'">'+(allCost?sfmt(allMv-allCost):'—')+'</div><div class="s '+cls(plA)+'">'+pct(plA)+'</div></div>'+
   '<div class="card"><div class="k">已收分红</div><div class="v">'+(allDiv?fmt(allDiv,0):'—')+'</div><div class="s">'+(allDiv&&allCost?'息(成本) '+pct0(allDiv/allCost):'现金到账后才计入')+'</div></div>'+
   '<div class="card"><div class="k">总收益含息</div><div class="v '+cls(totA)+'">'+pct(totA)+'</div></div>';
+}
+/* ---------- 备份/恢复 ---------- */
+function backupData(){
+ var payload=JSON.stringify({pool:state,gen:gstate});
+ function fallback(){ prompt('复制以下备份数据（换链接后点「恢复」粘贴）：',payload); }
+ try{
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(payload).then(function(){ alert('备份数据已复制到剪贴板，换链接后点「恢复」粘贴即可。'); },fallback); }
+  else fallback();
+ }catch(e){ fallback(); }
+}
+function restoreData(){
+ var t=prompt('粘贴备份数据：'); if(!t)return;
+ try{
+  var o=JSON.parse(t);
+  if(o.pool)localStorage.setItem('divpool_v2',JSON.stringify(o.pool));
+  if(o.gen)localStorage.setItem('holdgen_v2',JSON.stringify(o.gen));
+  location.reload();
+ }catch(e){ alert('数据格式不对，恢复失败。'); }
 }
 /* ---------- 行情 ---------- */
 function fmtEpoch(s){ if(!s)return ''; var d=new Date(s*1000); function z(n){return n<10?'0'+n:''+n;} return z(d.getMonth()+1)+'-'+z(d.getDate())+' '+z(d.getHours())+':'+z(d.getMinutes())+':'+z(d.getSeconds()); }
