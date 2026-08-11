@@ -213,7 +213,7 @@ if(DEMO){ gstate.items=[
 function gsave(){ if(DEMO)return; try{localStorage.setItem('holdgen_v2',JSON.stringify(gstate));}catch(e){} }
 function gitem(code){ for(var i=0;i<gstate.items.length;i++)if(gstate.items[i].code===code)return gstate.items[i]; return null; }
 function gprice(it){ var q=quotes[it.code]; if(q)return q.p; var b=it.buys||[]; return b.length?b[b.length-1].p:NaN; }
-function gfmtP(p){ return isNaN(p)?'—':fmt(p,p<10?3:2); }
+function gfmtP(p){ return isNaN(p)?'—':fmt(p,3); }
 function normCode(v){
  v=(v||'').trim();
  var lv=v.toLowerCase();
@@ -276,7 +276,7 @@ function gSync(code){
   var d=ins[0].value, p=parseFloat(ins[1].value), s=parseFloat(ins[2].value);
   var t=ins.length>3?parseFloat(ins[3].value):NaN;
   var r=ins.length>4?parseFloat(ins[4].value):NaN;
-  if(isHK&&t>0&&s>0&&r>0){ p=Math.round(t/r/s*10000)/10000; ins[1].value=p; }
+  if(isHK&&t>0&&s>0&&r>0){ p=Math.round(t/r/s*1000)/1000; ins[1].value=p; }
   if(!(isNaN(p))&&!(isNaN(s))&&s>0) arr.push({d:d||'',p:p,s:s,t:(t>0?t:undefined),r:(isHK&&r>0?r:undefined)});
  });
  it.buys=arr; gsave();
