@@ -54,7 +54,7 @@ footer { margin-top:34px; padding-top:14px; border-top:1px solid var(--line); fo
 <p class="small">总表按「红利池 / 其他持仓」分组：红利池合并为一行、点开展开6只明细；其他标的（如医药ETF、阿里巴巴）与红利池同级 · 数据保存在本浏览器</p>
 <div class="bar"><input id="newcode" placeholder="添加标的 如 512010 / hk09988" onkeydown="if(event.key==='Enter')tryAdd()"><button onclick="tryAdd()">添加标的</button><button onclick="fetchQuotes()">刷新行情</button><span class="small" id="qtime">行情：加载中…</span></div>
 <div class="cards" id="sum"></div>
-<div class="tblwrap"><table class="holdtable"><thead><tr><th>名称</th><th>现价</th><th>持仓数量</th><th>成本</th><th>市值</th><th>盈亏</th><th>年分红</th><th>总收益含息</th></tr></thead><tbody id="holdbody"></tbody></table></div>
+<div class="tblwrap"><table class="holdtable"><thead><tr><th>名称</th><th>现价/成本价</th><th>持仓数量</th><th>成本</th><th>市值</th><th>盈亏</th><th>年分红</th><th>总收益含息</th></tr></thead><tbody id="holdbody"></tbody></table></div>
 <div class="small" style="margin:2px 0 6px">点「红利池」行展开/收起个股；点个股或单只标的行跳到明细卡。</div>
 <h2 class="sect2" id="poolhead">红利池</h2>
 <div id="stocks"></div>
@@ -70,6 +70,7 @@ function fmt(n,d){ if(n==null||isNaN(n))return '—'; var dd=(d==null?2:d); retu
 function pct(n){ if(n==null||isNaN(n)||!isFinite(n))return '—'; return (n>=0?'+':'')+(n*100).toFixed(2)+'%'; }
 function pct0(n){ if(n==null||isNaN(n)||!isFinite(n))return '—'; return (n*100).toFixed(2)+'%'; }
 function cls(n){ if(n==null||isNaN(n)||!isFinite(n))return ''; return n>=0?'up':'dn'; }
+function sfmt(n){ if(n==null||isNaN(n)||!isFinite(n))return '—'; return (n>=0?'+':'')+Math.round(n).toLocaleString('zh-CN'); }
 function togglePool(){ poolExpanded=!poolExpanded; recalcAll(); }
 function fmtTs(t){
  if(/^\d{14}$/.test(t))return t.slice(4,6)+'-'+t.slice(6,8)+' '+t.slice(8,10)+':'+t.slice(10,12)+':'+t.slice(12,14);
@@ -277,8 +278,8 @@ function recalcAll(){
   var pb=document.getElementById('plan_'+st.code); if(pb) pb.innerHTML=planRows(st);
   set('ln_'+st.code,'三线：底 '+fmt(st.five[0],1)+' ｜ 买 '+fmt(st.five[1],1)+' ｜ 卖 '+fmt(st.five[2],1)+(p?' · 距卖出线 '+pct(st.five[2]/p-1):''));
   childRows+='<tr class="childrow" onclick="document.getElementById(\'stk_'+st.code+'\').scrollIntoView({behavior:\'smooth\'})">'+
-   '<td>'+st.name+'</td><td>'+fmt(p,2)+'</td><td>'+fmt(sh,0)+'</td><td>'+(cost?fmt(cost,0):'—')+'</td><td>'+(sh?fmt(mv,0):'—')+'</td>'+
-   '<td class="'+cls(pl)+'">'+pct(pl)+'</td><td>'+(sh?fmt(div,0):'—')+'</td><td class="'+cls(tot)+'">'+pct(tot)+'</td></tr>';
+   '<td>'+st.name+'</td><td>'+fmt(p,2)+' / '+(avg?fmt(avg,2):'—')+'</td><td>'+fmt(sh,0)+'</td><td>'+(cost?fmt(cost,0):'—')+'</td><td>'+(sh?fmt(mv,0):'—')+'</td>'+
+   '<td class="'+cls(pl)+'">'+(cost?sfmt(mv-cost)+'<br>'+pct(pl):'—')+'</td><td>'+(div?fmt(div,0):'')+'</td><td class="'+cls(tot)+'">'+(div?pct(tot):'')+'</td></tr>';
  });
  STOCKS.forEach(function(st){
   var el=document.getElementById('wt_'+st.code);
@@ -302,8 +303,8 @@ function recalcAll(){
   var q=quotes[it.code];
   set('gpx_'+it.code,gfmtP(p)+(q&&q.pc?' <span class="'+cls(p/q.pc-1)+'" style="font-size:13px">'+pct(p/q.pc-1)+'</span>':''));
   gRows+='<tr onclick="document.getElementById(\'gstk_'+it.code+'\').scrollIntoView({behavior:\'smooth\'})">'+
-   '<td><b>'+(it.name||it.code)+'</b> <span class="small">'+it.code+'</span></td><td>'+gfmtP(p)+'</td><td>'+fmt(sh,0)+'</td><td>'+(cost?fmt(cost,0):'—')+'</td><td>'+(sh?fmt(mv,0):'—')+'</td>'+
-   '<td class="'+cls(pl)+'">'+pct(pl)+'</td><td>'+(sh?fmt(div,0):'—')+'</td><td class="'+cls(tot)+'">'+pct(tot)+'</td></tr>';
+   '<td><b>'+(it.name||it.code)+'</b> <span class="small">'+it.code+'</span></td><td>'+gfmtP(p)+' / '+(avg?fmt(avg,3):'—')+'</td><td>'+fmt(sh,0)+'</td><td>'+(cost?fmt(cost,0):'—')+'</td><td>'+(sh?fmt(mv,0):'—')+'</td>'+
+   '<td class="'+cls(pl)+'">'+(cost?sfmt(mv-cost)+'<br>'+pct(pl):'—')+'</td><td>'+(div?fmt(div,0):'')+'</td><td class="'+cls(tot)+'">'+(div?pct(tot):'')+'</td></tr>';
  });
  var allCost=poolCost+gCost, allMv=poolMv+gMv, allDiv=poolDiv+gDiv;
  var plP=poolCost?(poolMv-poolCost)/poolCost:null;
@@ -314,10 +315,10 @@ function recalcAll(){
  var hb='<tr class="grprow" onclick="togglePool()">'+
   '<td><span class="caret">'+(poolExpanded?'▾':'▸')+'</span>红利池 <span class="small" style="font-weight:400">6只组合</span></td>'+
   '<td>—</td><td>6只</td><td>'+(poolCost?fmt(poolCost,0):'—')+'</td><td>'+(poolMv?fmt(poolMv,0):'—')+'</td>'+
-  '<td class="'+cls(plP)+'">'+pct(plP)+'</td><td>'+(poolDiv?fmt(poolDiv,0):'—')+'</td><td class="'+cls(totP)+'">'+pct(totP)+'</td></tr>';
+  '<td class="'+cls(plP)+'">'+(poolCost?sfmt(poolMv-poolCost)+'<br>'+pct(plP):'—')+'</td><td>'+(poolDiv?fmt(poolDiv,0):'')+'</td><td class="'+cls(totP)+'">'+(poolDiv?pct(totP):'')+'</td></tr>';
  if(poolExpanded) hb+=childRows;
  hb+=gRows;
- hb+='<tr class="totrow"><td>合计</td><td>—</td><td>—</td><td>'+(allCost?fmt(allCost,0):'—')+'</td><td>'+(allMv?fmt(allMv,0):'—')+'</td><td class="'+cls(plA)+'">'+pct(plA)+'</td><td>'+(allDiv?fmt(allDiv,0):'—')+'</td><td class="'+cls(totA)+'">'+pct(totA)+'</td></tr>';
+ hb+='<tr class="totrow"><td>合计</td><td>—</td><td>—</td><td>'+(allCost?fmt(allCost,0):'—')+'</td><td>'+(allMv?fmt(allMv,0):'—')+'</td><td class="'+cls(plA)+'">'+(allCost?sfmt(allMv-allCost)+'<br>'+pct(plA):'—')+'</td><td>'+(allDiv?fmt(allDiv,0):'')+'</td><td class="'+cls(totA)+'">'+(allDiv?pct(totA):'')+'</td></tr>';
  document.getElementById('holdbody').innerHTML=hb;
  document.getElementById('sum').innerHTML=
   '<div class="card"><div class="k">总成本</div><div class="v">'+(allCost?fmt(allCost,0):'—')+'</div><div class="s">其中红利池 '+(poolCost?fmt(poolCost/10000,1)+'万':'—')+'</div></div>'+
