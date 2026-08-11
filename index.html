@@ -135,22 +135,25 @@ function syncFromDOM(code){
  var arr=[];
  rowsOf(code).forEach(function(tr){
   var ins=tr.querySelectorAll('input');
-  var d=ins[0].value, p=parseFloat(ins[1].value), s=parseFloat(ins[2].value);
-  if(!(isNaN(p))&&!(isNaN(s))&&s>0) arr.push({d:d||'',p:p,s:s});
+  var d=ins[0].value, p=parseFloat(ins[1].value), s=parseFloat(ins[2].value), t=parseFloat(ins[3].value);
+  if(t>0&&s>0){ p=Math.round(t/s*10000)/10000; ins[1].value=p; }
+  if(!(isNaN(p))&&!(isNaN(s))&&s>0) arr.push({d:d||'',p:p,s:s,t:(t>0?t:undefined)});
  });
  state.buys[code]=arr; save();
 }
-function addRow(code,d,p,s){
+function addRow(code,d,p,s,t){
  var host=document.getElementById('rows_'+code);
  var tr=document.createElement('tr');
  tr.innerHTML='<td><input type="date" value="'+(d||'')+'"></td>'+
   '<td><input type="number" step="0.01" inputmode="decimal" placeholder="价格" value="'+(p!=null?p:'')+'"></td>'+
   '<td><input type="number" step="100" inputmode="numeric" placeholder="股数" value="'+(s!=null?s:'')+'"></td>'+
+  '<td><input type="number" step="0.01" inputmode="decimal" placeholder="可选" title="填入含手续费的总付款（清算金额），自动算出 买入价＝总付款÷股数" value="'+(t!=null?t:'')+'"></td>'+
   '<td><button class="delbtn" title="删除这笔">✕</button></td>';
  var ins=tr.querySelectorAll('input');
  ins[0].onchange=function(){ syncFromDOM(code); };
  ins[1].oninput=function(){ syncFromDOM(code); recalcAll(); };
  ins[2].oninput=function(){ syncFromDOM(code); recalcAll(); };
+ ins[3].oninput=function(){ syncFromDOM(code); recalcAll(); };
  tr.querySelector('.delbtn').onclick=function(){ tr.remove(); syncFromDOM(code); recalcAll(); };
  host.appendChild(tr);
  if(p!=null) { syncFromDOM(code); }
@@ -178,7 +181,7 @@ function build(){
    '<div class="sect">买入计划（200万分配 · 挂单价×股数）</div>'+
    '<table class="plantable"><tr><th>档位</th><th>挂单价</th><th>股数</th><th>金额</th></tr><tbody id="plan_'+st.code+'"></tbody></table>'+
    '<div class="sect">实际买入记录</div>'+
-   '<table><tr><th>日期</th><th>买入价</th><th>股数</th><th></th></tr><tbody id="rows_'+st.code+'"></tbody></table>'+
+   '<table><tr><th>日期</th><th>买入价</th><th>股数</th><th title="填入含手续费的总付款（清算金额），自动算出 买入价＝总付款÷股数">总付款<br><span class="small">含费·可选</span></th><th></th></tr><tbody id="rows_'+st.code+'"></tbody></table>'+
    '<button class="addbtn" onclick="addRow(\''+st.code+'\')">＋ 加一笔</button>'+
    '<div class="small" style="margin:4px 0">已收到分红 <input class="dps" type="number" step="0.01" value="'+(state.div[st.code]||0)+'" onchange="setDiv(\''+st.code+'\',this.value)"> 元（现金到账后填写，未分红填0）</div>'+
    '<div class="stats">'+
@@ -194,7 +197,7 @@ function build(){
    '<div class="lines" id="ln_'+st.code+'"></div>'+
    '</div>';
   host.appendChild(d);
-  (state.buys[st.code]||[]).forEach(function(b){ addRow(st.code,b.d,b.p,b.s); });
+  (state.buys[st.code]||[]).forEach(function(b){ addRow(st.code,b.d,b.p,b.s,b.t); });
  });
 }
 /* ---------- 其他持仓 ---------- */
@@ -242,22 +245,25 @@ function gSync(code){
  var arr=[];
  growsOf(code).forEach(function(tr){
   var ins=tr.querySelectorAll('input');
-  var d=ins[0].value, p=parseFloat(ins[1].value), s=parseFloat(ins[2].value);
-  if(!(isNaN(p))&&!(isNaN(s))&&s>0) arr.push({d:d||'',p:p,s:s});
+  var d=ins[0].value, p=parseFloat(ins[1].value), s=parseFloat(ins[2].value), t=parseFloat(ins[3].value);
+  if(t>0&&s>0){ p=Math.round(t/s*10000)/10000; ins[1].value=p; }
+  if(!(isNaN(p))&&!(isNaN(s))&&s>0) arr.push({d:d||'',p:p,s:s,t:(t>0?t:undefined)});
  });
  it.buys=arr; gsave();
 }
-function gAddRow(code,d,p,s){
+function gAddRow(code,d,p,s,t){
  var host=document.getElementById('grows_'+code); if(!host)return;
  var tr=document.createElement('tr');
  tr.innerHTML='<td><input type="date" value="'+(d||'')+'"></td>'+
   '<td><input type="number" step="0.001" inputmode="decimal" placeholder="价格" value="'+(p!=null?p:'')+'"></td>'+
   '<td><input type="number" step="1" inputmode="numeric" placeholder="股数" value="'+(s!=null?s:'')+'"></td>'+
+  '<td><input type="number" step="0.01" inputmode="decimal" placeholder="可选" title="填入含手续费的总付款（清算金额），自动算出 买入价＝总付款÷股数" value="'+(t!=null?t:'')+'"></td>'+
   '<td><button class="delbtn" title="删除这笔">✕</button></td>';
  var ins=tr.querySelectorAll('input');
  ins[0].onchange=function(){ gSync(code); };
  ins[1].oninput=function(){ gSync(code); recalcAll(); };
  ins[2].oninput=function(){ gSync(code); recalcAll(); };
+ ins[3].oninput=function(){ gSync(code); recalcAll(); };
  tr.querySelector('.delbtn').onclick=function(){ tr.remove(); gSync(code); recalcAll(); };
  host.appendChild(tr);
  if(p!=null) gSync(code);
@@ -273,7 +279,7 @@ function gBuild(){
    ' <span class="small">成本 <b id="gch_'+it.code+'">—</b> ｜ 市值 <b id="gmvh_'+it.code+'">—</b> ｜ 盈亏 <b id="gplh_'+it.code+'">—</b></span>'+
    ' <button class="delbtn" style="margin-left:auto" title="移除该标的" onclick="event.stopPropagation();removeItem(\''+it.code+'\')">✕</button></h3>'+
    '<div id="gbody_'+it.code+'" style="display:none">'+
-   '<table><tr><th>日期</th><th>买入价</th><th>股数</th><th></th></tr><tbody id="grows_'+it.code+'"></tbody></table>'+
+   '<table><tr><th>日期</th><th>买入价</th><th>股数</th><th title="填入含手续费的总付款（清算金额），自动算出 买入价＝总付款÷股数">总付款<br><span class="small">含费·可选</span></th><th></th></tr><tbody id="grows_'+it.code+'"></tbody></table>'+
    '<button class="addbtn" onclick="gAddRow(\''+it.code+'\')">＋ 加一笔</button>'+
    '<div class="small" style="margin:4px 0">已收到分红 <input class="dps" type="number" step="0.01" value="'+(it.div||0)+'" onchange="gSetDiv(\''+it.code+'\',this.value)"> 元（现金到账后填写，未分红填0）</div>'+
    '<div class="stats">'+
@@ -288,7 +294,7 @@ function gBuild(){
    '</div>'+
    '</div>';
   host.appendChild(d);
-  (it.buys||[]).forEach(function(b){ gAddRow(it.code,b.d,b.p,b.s); });
+  (it.buys||[]).forEach(function(b){ gAddRow(it.code,b.d,b.p,b.s,b.t); });
  });
  if(!gstate.items.length) host.innerHTML='<div class="stock"><div class="small">还没有其他标的，在上方输入代码添加（如医药ETF 512010、阿里巴巴 hk09988）。</div></div>';
 }
@@ -297,7 +303,7 @@ function recalcAll(){
  var poolCost=0,poolMv=0,poolDiv=0,per={},childRows='';
  STOCKS.forEach(function(st){
   var p=price(st),sh=0,cost=0;
-  (state.buys[st.code]||[]).forEach(function(b){ sh+=b.s; cost+=b.p*b.s; });
+  (state.buys[st.code]||[]).forEach(function(b){ sh+=b.s; cost+=(b.t>0)?b.t:b.p*b.s; });
   var mv=sh*p, div=state.div[st.code]||0, avg=sh?cost/sh:null;
   per[st.code]={mv:mv,cost:cost}; poolCost+=cost; poolMv+=mv; poolDiv+=div;
   function set(id,html,c){ var el=document.getElementById(id); if(!el)return; el.innerHTML=html; if(c!==undefined)el.className=c; }
@@ -306,9 +312,9 @@ function recalcAll(){
   set('cost_'+st.code,cost?fmt(cost,0):'—');
   set('avg_'+st.code,avg?fmt(avg,2):'—');
   set('mv_'+st.code,sh?fmt(mv,0):'—');
-  var pl=cost?(mv-cost)/cost:null; set('pl_'+st.code,cost?sfmt(mv-cost)+' '+pct(pl):'—',cls(pl));
+  var pl=cost?(mv-cost)/cost:null; set('pl_'+st.code,cost?sfmt(mv-cost)+' / '+pct(pl):'—',cls(pl));
   set('hmv_'+st.code,sh?fmt(mv,0):'—');
-  set('hpl_'+st.code,cost?sfmt(mv-cost)+' '+pct(pl):'—',cls(pl));
+  set('hpl_'+st.code,cost?sfmt(mv-cost)+' / '+pct(pl):'—',cls(pl));
   set('dv_'+st.code,div?fmt(div,0):'—');
   set('yoc_'+st.code,(div&&cost)?pct0(div/cost):'—');
   var tot=cost?(mv-cost+div)/cost:null; set('tot_'+st.code,div?pct(tot):'—',div?cls(tot):'');
@@ -328,7 +334,7 @@ function recalcAll(){
  var gCost=0,gMv=0,gDiv=0,gRows='';
  gstate.items.forEach(function(it){
   var p=gprice(it),sh=0,cost=0;
-  (it.buys||[]).forEach(function(b){ sh+=b.s; cost+=b.p*b.s; });
+  (it.buys||[]).forEach(function(b){ sh+=b.s; cost+=(b.t>0)?b.t:b.p*b.s; });
   var mv=sh*p, div=it.div||0, avg=sh?cost/sh:null;
   gCost+=cost; gMv+=mv; gDiv+=div;
   function set(id,html,c){ var el=document.getElementById(id); if(!el)return; el.innerHTML=html; if(c!==undefined)el.className=c; }
@@ -336,10 +342,10 @@ function recalcAll(){
   set('gcost_'+it.code,cost?fmt(cost,0):'—');
   set('gavg_'+it.code,avg?fmt(avg,3):'—');
   set('gmv_'+it.code,sh?fmt(mv,0):'—');
-  var pl=cost?(mv-cost)/cost:null; set('gpl_'+it.code,cost?sfmt(mv-cost)+' '+pct(pl):'—',cls(pl));
+  var pl=cost?(mv-cost)/cost:null; set('gpl_'+it.code,cost?sfmt(mv-cost)+' / '+pct(pl):'—',cls(pl));
   set('gch_'+it.code,cost?fmt(cost,0):'—');
   set('gmvh_'+it.code,sh?fmt(mv,0):'—');
-  set('gplh_'+it.code,cost?sfmt(mv-cost)+' '+pct(pl):'—',cls(pl));
+  set('gplh_'+it.code,cost?sfmt(mv-cost)+' / '+pct(pl):'—',cls(pl));
   set('gdv_'+it.code,div?fmt(div,0):'—');
   set('gyoc_'+it.code,(div&&cost)?pct0(div/cost):'—');
   var tot=cost?(mv-cost+div)/cost:null; set('gtot_'+it.code,div?pct(tot):'—',div?cls(tot):'');
@@ -354,7 +360,7 @@ function recalcAll(){
  var totP=poolCost?(poolMv-poolCost+poolDiv)/poolCost:null;
  var plA=allCost?(allMv-allCost)/allCost:null;
  var totA=allCost?(allMv-allCost+allDiv)/allCost:null;
- document.getElementById('poolhead').innerHTML='红利池 <span class="small">目标200万 ｜ 已投 '+(poolCost?fmt(poolCost/10000,1)+'万':'—')+' ｜ 建仓 '+(poolCost?fmt(poolCost/TOTAL*100,1)+'%':'—')+' ｜ 盈亏 <span class="'+cls(plP)+'">'+(poolCost?sfmt(poolMv-poolCost)+' '+pct(plP):'—')+'</span></span>';
+ document.getElementById('poolhead').innerHTML='红利池 <span class="small">目标200万 ｜ 已投 '+(poolCost?fmt(poolCost/10000,1)+'万':'—')+' ｜ 建仓 '+(poolCost?fmt(poolCost/TOTAL*100,1)+'%':'—')+' ｜ 盈亏 <span class="'+cls(plP)+'">'+(poolCost?sfmt(poolMv-poolCost)+' / '+pct(plP):'—')+'</span></span>';
  var hb='<tr class="grprow" onclick="togglePool()">'+
   '<td><span class="caret">'+(poolExpanded?'▾':'▸')+'</span>红利池 <span class="small" style="font-weight:400">6只组合</span></td>'+
   '<td>—</td><td>6只</td><td>'+(poolCost?fmt(poolCost,0):'—')+'</td><td>'+(poolMv?fmt(poolMv,0):'—')+'</td>'+
