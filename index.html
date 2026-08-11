@@ -54,13 +54,13 @@ footer { margin-top:34px; padding-top:14px; border-top:1px solid var(--line); fo
 <p class="small">总表按「红利池 / 其他持仓」分组：红利池合并为一行、点开展开6只明细；其他标的（如医药ETF、阿里巴巴）与红利池同级 · 数据保存在本浏览器</p>
 <div class="bar"><input id="newcode" placeholder="添加标的 如 512010 / hk09988" onkeydown="if(event.key==='Enter')tryAdd()"><button onclick="tryAdd()">添加标的</button><button onclick="fetchQuotes()">刷新行情</button><span class="small" id="qtime">行情：加载中…</span></div>
 <div class="cards" id="sum"></div>
-<div class="tblwrap"><table class="holdtable"><thead><tr><th>名称</th><th>现价/成本价</th><th>持仓数量</th><th>成本</th><th>市值</th><th>盈亏</th><th>年分红</th><th>总收益含息</th></tr></thead><tbody id="holdbody"></tbody></table></div>
+<div class="tblwrap"><table class="holdtable"><thead><tr><th>名称</th><th>现价/成本价</th><th>持仓数量</th><th>成本</th><th>市值</th><th>盈亏</th><th>已收分红</th><th>总收益含息</th></tr></thead><tbody id="holdbody"></tbody></table></div>
 <div class="small" style="margin:2px 0 6px">点「红利池」行展开/收起个股；点个股或单只标的行跳到明细卡。</div>
 <h2 class="sect2" id="poolhead">红利池</h2>
 <div id="stocks"></div>
 <h2 class="sect2">其他持仓</h2>
 <div id="gstocks"></div>
-<footer>口径：分红=股数×每股分红（红利池默认FY25，可在卡内修改DPS；其他持仓不填按0）；股息率(成本)=DPS÷平均成本；总收益=(市值−成本+一年分红)÷成本；红利池现权重=池内市值占比 vs 目标权重。买入计划=200万×目标权重，分档股数与挂单价来自终版报告（①首笔/②加仓/恐慌，另留备用金）；「可挂」=现价已≤挂单价。三线来自终版报告（大底/买/卖）。行情源：腾讯qt.gtimg.cn，延迟以页面时间戳为准；无行情的标的暂以最近一笔买入价计。个人研究记录，非投资建议。</footer>
+<footer>口径：分红=实际到账的现金分红（派息到账后在卡内填写金额，未分红填0、不计入）；息(成本)=已收分红÷成本；总收益含息=(市值−成本+已收分红)÷成本；红利池现权重=池内市值占比 vs 目标权重。买入计划=200万×目标权重，分档股数与挂单价来自终版报告（①首笔/②加仓/恐慌，另留备用金）；「可挂」=现价已≤挂单价。三线来自终版报告（大底/买/卖）。行情源：腾讯qt.gtimg.cn，延迟以页面时间戳为准；无行情的标的暂以最近一笔买入价计。个人研究记录，非投资建议。</footer>
 <script>
 /* ---------- 公共 ---------- */
 var DEMO=location.search.indexOf('demo')>=0;
@@ -81,24 +81,29 @@ function fmtTs(t){
 /* ---------- 红利池 ---------- */
 var TOTAL=2000000;
 var STOCKS=[
- {code:'sh600809',name:'山西汾酒',tgt:20,dps:6.56,five:[122.1,174.4,242.2],fb:123.26,reserve:1,
+ {code:'sh600809',name:'山西汾酒',tgt:20,five:[122.1,174.4,242.2],fb:123.26,reserve:1,
   plan:[{t:'①',p:120,s:900},{t:'①',p:116,s:800},{t:'①',p:110,s:700},{t:'②',p:101,s:800},{t:'③',p:90,s:400}]},
- {code:'sz000651',name:'格力电器',tgt:20,dps:3.00,five:[33.2,47.4,86.1],fb:40.57,reserve:30,
+ {code:'sz000651',name:'格力电器',tgt:20,five:[33.2,47.4,86.1],fb:40.57,reserve:30,
   plan:[{t:'①',p:40.2,s:2000,label:'39.8–40.6'},{t:'②',p:37.0,s:2600},{t:'③',p:33.2,s:3100}]},
- {code:'sh601318',name:'中国平安',tgt:20,dps:2.70,five:[48.1,68.7,105.6],fb:53.30,reserve:29,
+ {code:'sh601318',name:'中国平安',tgt:20,five:[48.1,68.7,105.6],fb:53.30,reserve:29,
   plan:[{t:'①',p:53.25,s:1500,label:'53.0–53.5'},{t:'②',p:51.7,s:2000},{t:'③',p:48.1,s:2100}]},
- {code:'sh600519',name:'贵州茅台',tgt:15,dps:51.98,five:[982,1511,2061],fb:1347.70,reserve:20,
+ {code:'sh600519',name:'贵州茅台',tgt:15,five:[982,1511,2061],fb:1347.70,reserve:20,
   plan:[{t:'①',p:1308,s:100,label:'1300–1315'},{t:'②',p:1080,s:100,label:'≤1080'}]},
- {code:'sh600036',name:'招商银行',tgt:15,dps:2.016,five:[28.8,41.2,74.4],fb:38.97,reserve:30,
+ {code:'sh600036',name:'招商银行',tgt:15,five:[28.8,41.2,74.4],fb:38.97,reserve:30,
   plan:[{t:'①',p:38.9,s:1500,label:'38.5–39.2'},{t:'②',p:35.8,s:2100},{t:'③',p:29.0,s:2600}]},
- {code:'sh600887',name:'伊利股份',tgt:10,dps:1.38,five:[18.3,26.2,34.9],fb:26.25,reserve:31,
+ {code:'sh600887',name:'伊利股份',tgt:10,five:[18.3,26.2,34.9],fb:26.25,reserve:31,
   plan:[{t:'①',p:26.2,s:1500,label:'26.0–26.5'},{t:'②',p:24.8,s:2000},{t:'③',p:19.0,s:2600}]}
 ];
-var state={buys:{},dps:{}};
-if(!DEMO){ try{var sv=localStorage.getItem('divpool_v1');if(sv)state=JSON.parse(sv);}catch(e){} }
-STOCKS.forEach(function(st){ if(!state.buys[st.code])state.buys[st.code]=[]; if(!state.dps[st.code])state.dps[st.code]=st.dps; });
-if(DEMO){ state.buys={ sh600809:[{d:'2026-08-11',p:120,s:900},{d:'2026-08-11',p:116,s:800}], sz000651:[{d:'2026-08-11',p:40.2,s:2000}], sh601318:[{d:'2026-08-11',p:53.2,s:1500}], sh600519:[{d:'2026-08-11',p:1308,s:100}], sh600036:[{d:'2026-08-11',p:38.9,s:1500}], sh600887:[{d:'2026-08-11',p:26.2,s:1500}] }; }
-function save(){ if(DEMO)return; try{localStorage.setItem('divpool_v1',JSON.stringify(state));}catch(e){} }
+var state={buys:{},div:{}};
+if(!DEMO){ try{
+ var sv=localStorage.getItem('divpool_v2');
+ if(sv){ state=JSON.parse(sv); }
+ else { var old=localStorage.getItem('divpool_v1'); if(old){ var ov=JSON.parse(old); state.buys=ov.buys||{}; try{localStorage.setItem('divpool_v2',JSON.stringify(state));}catch(e){} } }
+}catch(e){} }
+if(!state.buys)state.buys={}; if(!state.div)state.div={};
+STOCKS.forEach(function(st){ if(!state.buys[st.code])state.buys[st.code]=[]; if(state.div[st.code]==null)state.div[st.code]=0; });
+if(DEMO){ state.buys={ sh600809:[{d:'2026-08-11',p:120,s:900},{d:'2026-08-11',p:116,s:800}], sz000651:[{d:'2026-08-11',p:40.2,s:2000}], sh601318:[{d:'2026-08-11',p:53.2,s:1500}], sh600519:[{d:'2026-08-11',p:1308,s:100}], sh600036:[{d:'2026-08-11',p:38.9,s:1500}], sh600887:[{d:'2026-08-11',p:26.2,s:1500}] }; state.div={sz000651:6000}; }
+function save(){ if(DEMO)return; try{localStorage.setItem('divpool_v2',JSON.stringify(state));}catch(e){} }
 function price(st){ var q=quotes[st.code]; return q?q.p:st.fb; }
 function zone(st){ var p=price(st); if(p<=st.five[0])return['大底区','bred']; if(p<=st.five[1])return['买入区','bamber']; return['不建仓区','bgray']; }
 function alloc(st){ return TOTAL*st.tgt/100; }
@@ -128,7 +133,7 @@ function addRow(code,d,p,s){
  if(p!=null) { syncFromDOM(code); }
  recalcAll();
 }
-function setDps(code,v){ state.dps[code]=parseFloat(v)||0; save(); recalcAll(); }
+function setDiv(code,v){ state.div[code]=parseFloat(v)||0; save(); recalcAll(); }
 function planRows(st){
  var html='';
  st.plan.forEach(function(o){
@@ -151,14 +156,14 @@ function build(){
    '<div class="sect">实际买入记录</div>'+
    '<table><tr><th>日期</th><th>买入价</th><th>股数</th><th></th></tr><tbody id="rows_'+st.code+'"></tbody></table>'+
    '<button class="addbtn" onclick="addRow(\''+st.code+'\')">＋ 加一笔</button>'+
-   '<div class="small" style="margin:4px 0">FY25每股分红 <input class="dps" type="number" step="0.01" value="'+state.dps[st.code]+'" onchange="setDps(\''+st.code+'\',this.value)"> 元/股</div>'+
+   '<div class="small" style="margin:4px 0">已收到分红 <input class="dps" type="number" step="0.01" value="'+(state.div[st.code]||0)+'" onchange="setDiv(\''+st.code+'\',this.value)"> 元（现金到账后填写，未分红填0）</div>'+
    '<div class="stats">'+
    '<span>持股 <b id="sh_'+st.code+'">0</b></span>'+
    '<span>成本 <b id="cost_'+st.code+'">—</b></span>'+
    '<span>均价 <b id="avg_'+st.code+'">—</b></span>'+
    '<span>市值 <b id="mv_'+st.code+'">—</b></span>'+
    '<span>价差 <b id="pl_'+st.code+'">—</b></span>'+
-   '<span>年分红 <b id="dv_'+st.code+'">—</b></span>'+
+   '<span>已收分红 <b id="dv_'+st.code+'">—</b></span>'+
    '<span>息(成本) <b id="yoc_'+st.code+'">—</b></span>'+
    '<span>总收益含息 <b id="tot_'+st.code+'">—</b></span>'+
    '</div>'+
@@ -169,13 +174,18 @@ function build(){
 }
 /* ---------- 其他持仓 ---------- */
 var gstate={items:[]};
-if(!DEMO){ try{var gsv=localStorage.getItem('holdgen_v1');if(gsv)gstate=JSON.parse(gsv);}catch(e){} }
+if(!DEMO){ try{
+ var gsv=localStorage.getItem('holdgen_v2');
+ if(gsv){ gstate=JSON.parse(gsv); }
+ else { var gold=localStorage.getItem('holdgen_v1'); if(gold){ var go=JSON.parse(gold); gstate.items=(go.items||[]).map(function(x){ return {code:x.code,name:x.name||'',div:0,buys:x.buys||[]}; }); try{localStorage.setItem('holdgen_v2',JSON.stringify(gstate));}catch(e){} } }
+}catch(e){} }
 if(!gstate.items)gstate.items=[];
+gstate.items.forEach(function(it){ if(it.div==null)it.div=0; });
 if(DEMO){ gstate.items=[
- {code:'sh512010',name:'',dps:0,buys:[{d:'2026-08-11',p:0.36,s:30000}]},
- {code:'hk09988',name:'',dps:0,buys:[{d:'2026-08-11',p:112,s:1000}]}
+ {code:'sh512010',name:'',div:0,buys:[{d:'2026-08-11',p:0.36,s:30000}]},
+ {code:'hk09988',name:'',div:0,buys:[{d:'2026-08-11',p:112,s:1000}]}
 ]; }
-function gsave(){ if(DEMO)return; try{localStorage.setItem('holdgen_v1',JSON.stringify(gstate));}catch(e){} }
+function gsave(){ if(DEMO)return; try{localStorage.setItem('holdgen_v2',JSON.stringify(gstate));}catch(e){} }
 function gitem(code){ for(var i=0;i<gstate.items.length;i++)if(gstate.items[i].code===code)return gstate.items[i]; return null; }
 function gprice(it){ var q=quotes[it.code]; if(q)return q.p; var b=it.buys||[]; return b.length?b[b.length-1].p:NaN; }
 function gfmtP(p){ return isNaN(p)?'—':fmt(p,p<10?3:2); }
@@ -192,7 +202,7 @@ function tryAdd(){
  var code=normCode(el.value);
  if(!code){ alert('代码格式不对，示例：512010、600036、hk09988、usAAPL、sh000001'); return; }
  if(gitem(code)){ alert('已存在：'+code); return; }
- gstate.items.push({code:code,name:'',dps:0,buys:[]});
+ gstate.items.push({code:code,name:'',div:0,buys:[]});
  gsave(); el.value='';
  gBuild(); recalcAll(); fetchQuotes();
 }
@@ -228,7 +238,7 @@ function gAddRow(code,d,p,s){
  if(p!=null) gSync(code);
  recalcAll();
 }
-function gSetDps(code,v){ var it=gitem(code); if(!it)return; it.dps=parseFloat(v)||0; gsave(); recalcAll(); }
+function gSetDiv(code,v){ var it=gitem(code); if(!it)return; it.div=parseFloat(v)||0; gsave(); recalcAll(); }
 function gBuild(){
  var host=document.getElementById('gstocks'); host.innerHTML='';
  gstate.items.forEach(function(it){
@@ -238,14 +248,14 @@ function gBuild(){
    ' <button class="delbtn" style="margin-left:auto" title="移除该标的" onclick="removeItem(\''+it.code+'\')">✕</button></h3>'+
    '<table><tr><th>日期</th><th>买入价</th><th>股数</th><th></th></tr><tbody id="grows_'+it.code+'"></tbody></table>'+
    '<button class="addbtn" onclick="gAddRow(\''+it.code+'\')">＋ 加一笔</button>'+
-   '<div class="small" style="margin:4px 0">每股分红(DPS) <input class="dps" type="number" step="0.01" value="'+(it.dps||0)+'" onchange="gSetDps(\''+it.code+'\',this.value)"> 元/股（不分红填0）</div>'+
+   '<div class="small" style="margin:4px 0">已收到分红 <input class="dps" type="number" step="0.01" value="'+(it.div||0)+'" onchange="gSetDiv(\''+it.code+'\',this.value)"> 元（现金到账后填写，未分红填0）</div>'+
    '<div class="stats">'+
    '<span>持股 <b id="gsh_'+it.code+'">0</b></span>'+
    '<span>成本 <b id="gcost_'+it.code+'">—</b></span>'+
    '<span>均价 <b id="gavg_'+it.code+'">—</b></span>'+
    '<span>市值 <b id="gmv_'+it.code+'">—</b></span>'+
    '<span>价差 <b id="gpl_'+it.code+'">—</b></span>'+
-   '<span>年分红 <b id="gdv_'+it.code+'">—</b></span>'+
+   '<span>已收分红 <b id="gdv_'+it.code+'">—</b></span>'+
    '<span>息(成本) <b id="gyoc_'+it.code+'">—</b></span>'+
    '<span>总收益含息 <b id="gtot_'+it.code+'">—</b></span>'+
    '</div>';
@@ -260,7 +270,7 @@ function recalcAll(){
  STOCKS.forEach(function(st){
   var p=price(st),sh=0,cost=0;
   (state.buys[st.code]||[]).forEach(function(b){ sh+=b.s; cost+=b.p*b.s; });
-  var mv=sh*p, div=sh*(state.dps[st.code]||0), avg=sh?cost/sh:null;
+  var mv=sh*p, div=state.div[st.code]||0, avg=sh?cost/sh:null;
   per[st.code]={mv:mv,cost:cost}; poolCost+=cost; poolMv+=mv; poolDiv+=div;
   function set(id,html,c){ var el=document.getElementById(id); if(!el)return; el.innerHTML=html; if(c!==undefined)el.className=c; }
   set('sh_'+st.code,fmt(sh,0));
@@ -269,9 +279,9 @@ function recalcAll(){
   set('avg_'+st.code,avg?fmt(avg,2):'—');
   set('mv_'+st.code,sh?fmt(mv,0):'—');
   var pl=cost?(mv-cost)/cost:null; set('pl_'+st.code,pct(pl),cls(pl));
-  set('dv_'+st.code,sh?fmt(div,0):'—');
-  set('yoc_'+st.code,avg?pct0((state.dps[st.code]||0)/avg):'—');
-  var tot=cost?(mv-cost+div)/cost:null; set('tot_'+st.code,pct(tot),cls(tot));
+  set('dv_'+st.code,div?fmt(div,0):'—');
+  set('yoc_'+st.code,(div&&cost)?pct0(div/cost):'—');
+  var tot=cost?(mv-cost+div)/cost:null; set('tot_'+st.code,div?pct(tot):'—',div?cls(tot):'');
   var q=quotes[st.code];
   set('px_'+st.code,fmt(p,2)+(q&&q.pc?' <span class="'+cls(p/q.pc-1)+'" style="font-size:13px">'+pct(p/q.pc-1)+'</span>':''));
   var z=zone(st); set('z_'+st.code,z[0],'bdg '+z[1]);
@@ -289,7 +299,7 @@ function recalcAll(){
  gstate.items.forEach(function(it){
   var p=gprice(it),sh=0,cost=0;
   (it.buys||[]).forEach(function(b){ sh+=b.s; cost+=b.p*b.s; });
-  var mv=sh*p, div=sh*(it.dps||0), avg=sh?cost/sh:null;
+  var mv=sh*p, div=it.div||0, avg=sh?cost/sh:null;
   gCost+=cost; gMv+=mv; gDiv+=div;
   function set(id,html,c){ var el=document.getElementById(id); if(!el)return; el.innerHTML=html; if(c!==undefined)el.className=c; }
   set('gsh_'+it.code,fmt(sh,0));
@@ -297,9 +307,9 @@ function recalcAll(){
   set('gavg_'+it.code,avg?fmt(avg,3):'—');
   set('gmv_'+it.code,sh?fmt(mv,0):'—');
   var pl=cost?(mv-cost)/cost:null; set('gpl_'+it.code,pct(pl),cls(pl));
-  set('gdv_'+it.code,sh?fmt(div,0):'—');
-  set('gyoc_'+it.code,avg?pct0((it.dps||0)/avg):'—');
-  var tot=cost?(mv-cost+div)/cost:null; set('gtot_'+it.code,pct(tot),cls(tot));
+  set('gdv_'+it.code,div?fmt(div,0):'—');
+  set('gyoc_'+it.code,(div&&cost)?pct0(div/cost):'—');
+  var tot=cost?(mv-cost+div)/cost:null; set('gtot_'+it.code,div?pct(tot):'—',div?cls(tot):'');
   var q=quotes[it.code];
   set('gpx_'+it.code,gfmtP(p)+(q&&q.pc?' <span class="'+cls(p/q.pc-1)+'" style="font-size:13px">'+pct(p/q.pc-1)+'</span>':''));
   gRows+='<tr onclick="document.getElementById(\'gstk_'+it.code+'\').scrollIntoView({behavior:\'smooth\'})">'+
@@ -324,8 +334,8 @@ function recalcAll(){
   '<div class="card"><div class="k">总成本</div><div class="v">'+(allCost?fmt(allCost,0):'—')+'</div><div class="s">其中红利池 '+(poolCost?fmt(poolCost/10000,1)+'万':'—')+'</div></div>'+
   '<div class="card"><div class="k">总市值</div><div class="v">'+(allMv?fmt(allMv,0):'—')+'</div></div>'+
   '<div class="card"><div class="k">盈亏</div><div class="v '+cls(plA)+'">'+pct(plA)+'</div></div>'+
-  '<div class="card"><div class="k">年分红</div><div class="v">'+(allDiv?fmt(allDiv,0):'—')+'</div><div class="s">息(成本) '+(allCost?pct0(allDiv/allCost):'—')+'</div></div>'+
-  '<div class="card"><div class="k">总收益含一年息</div><div class="v '+cls(totA)+'">'+pct(totA)+'</div></div>';
+  '<div class="card"><div class="k">已收分红</div><div class="v">'+(allDiv?fmt(allDiv,0):'—')+'</div><div class="s">'+(allDiv&&allCost?'息(成本) '+pct0(allDiv/allCost):'现金到账后才计入')+'</div></div>'+
+  '<div class="card"><div class="k">总收益含息</div><div class="v '+cls(totA)+'">'+pct(totA)+'</div></div>';
 }
 /* ---------- 行情 ---------- */
 function fetchQuotes(){
