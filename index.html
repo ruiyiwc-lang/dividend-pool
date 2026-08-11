@@ -61,7 +61,7 @@ footer { margin-top:34px; padding-top:14px; border-top:1px solid var(--line); fo
 <div id="stocks"></div>
 <h2 class="sect2">其他持仓</h2>
 <div id="gstocks"></div>
-<footer>口径：分红=实际到账的现金分红（派息到账后在卡内填写金额，未分红填0、不计入）；息(成本)=已收分红÷成本；总收益含息=(市值−成本+已收分红)÷成本；红利池现权重=池内市值占比 vs 目标权重。买入计划=200万×目标权重，分档股数与挂单价来自终版报告（①首笔/②加仓/恐慌，另留备用金）；「可挂」=现价已≤挂单价。三线来自终版报告（大底/买/卖）。行情源：A股/ETF用腾讯qt.gtimg.cn，港股/美股用东方财富实时行情，东财不可用时回退腾讯（港股延迟约15分钟）；无行情的标的暂以最近一笔买入价计。个人研究记录，非投资建议。</footer>
+<footer>口径：分红=实际到账的现金分红（派息到账后在卡内填写金额，未分红填0、不计入）；息(成本)=已收分红÷成本；总收益含息=(市值−成本+已收分红)÷成本；红利池现权重=池内市值占比 vs 目标权重。买入计划=200万×目标权重，分档股数与挂单价来自终版报告（①首笔/②加仓/恐慌，另留备用金）；「可挂」=现价已≤挂单价。三线来自终版报告（大底/买/卖）。行情源：A股/ETF用腾讯qt.gtimg.cn，港股/美股用东方财富实时行情，东财不可用时回退腾讯（港股延迟约15分钟）；无行情的标的暂以最近一笔买入价计。港股总付款填人民币清算金额，汇率按该行日期自动获取（ECB参考汇率，失败回退腾讯实时价），可手改为成交单实际汇率；港币成本＝总付款÷汇率，买入价＝港币成本÷股数。个人研究记录，非投资建议。</footer>
 <script>
 /* ---------- 公共 ---------- */
 var DEMO=location.search.indexOf('demo')>=0;
@@ -240,34 +240,73 @@ function removeItem(code){
  gsave(); gBuild(); recalcAll();
 }
 function growsOf(code){ return Array.prototype.slice.call(document.getElementById('grows_'+code).children); }
+var fxCache={};
+function tencentFx(cb){
+ var sc=document.createElement('script');
+ sc.src='https://qt.gtimg.cn/q=whHKDCNY&t='+Date.now();
+ sc.onload=function(){ var r=0; var s=window['v_whHKDCNY']; if(s){ var f=s.split('~'); r=parseFloat(f[3]); } if(r>0)fxCache['latest']=r; cb(r||0); };
+ sc.onerror=function(){ cb(0); };
+ document.head.appendChild(sc);
+}
+function fetchFx(dateStr,cb){
+ var key=(dateStr&&/^\d{4}-\d{2}-\d{2}$/.test(dateStr))?dateStr:'latest';
+ if(fxCache[key]!=null){ cb(fxCache[key]); return; }
+ var url='https://api.frankfurter.dev/v1/'+(key==='latest'?'latest':key)+'?from=HKD&to=CNY';
+ fetch(url).then(function(x){ if(!x.ok)throw 0; return x.json(); }).then(function(j){
+  var r=j&&j.rates&&j.rates.CNY; if(r>0){ fxCache[key]=r; cb(r); } else cb(0);
+ }).catch(function(){ tencentFx(cb); });
+}
+function ensureFx(code,tr){
+ if(code.indexOf('hk')!==0)return;
+ var ins=tr.querySelectorAll('input'); if(ins.length<5)return;
+ var t=parseFloat(ins[3].value);
+ if(!(t>0)||ins[4].value!=='')return;
+ var d=ins[0].value;
+ fetchFx(d,function(r){
+  if(r>0&&ins[4].value===''){
+   ins[4].value=r.toFixed(5); ins[4].dataset.auto='1';
+   ins[4].title='自动获取：1港币='+r.toFixed(5)+'元（'+(d||'最新')+'·ECB参考汇率，可手改成成交单上的汇率）';
+   gSync(code); recalcAll();
+  }
+ });
+}
 function gSync(code){
  var it=gitem(code); if(!it)return;
+ var isHK=code.indexOf('hk')===0;
  var arr=[];
  growsOf(code).forEach(function(tr){
   var ins=tr.querySelectorAll('input');
   var d=ins[0].value, p=parseFloat(ins[1].value), s=parseFloat(ins[2].value), t=parseFloat(ins[3].value);
-  if(t>0&&s>0){ p=Math.round(t/s*10000)/10000; ins[1].value=p; }
-  if(!(isNaN(p))&&!(isNaN(s))&&s>0) arr.push({d:d||'',p:p,s:s,t:(t>0?t:undefined)});
+  var r=ins.length>4?parseFloat(ins[4].value):NaN;
+  if(isHK&&t>0&&s>0&&r>0){ p=Math.round(t/r/s*10000)/10000; ins[1].value=p; }
+  else if(!isHK&&t>0&&s>0){ p=Math.round(t/s*10000)/10000; ins[1].value=p; }
+  if(!(isNaN(p))&&!(isNaN(s))&&s>0) arr.push({d:d||'',p:p,s:s,t:(t>0?t:undefined),r:(isHK&&r>0?r:undefined)});
  });
  it.buys=arr; gsave();
 }
-function gAddRow(code,d,p,s,t){
+function gAddRow(code,d,p,s,t,r){
  var host=document.getElementById('grows_'+code); if(!host)return;
+ var isHK=code.indexOf('hk')===0;
  var tr=document.createElement('tr');
  tr.innerHTML='<td><input type="date" value="'+(d||'')+'"></td>'+
-  '<td><input type="number" step="0.001" inputmode="decimal" placeholder="价格" value="'+(p!=null?p:'')+'"></td>'+
+  '<td><input type="number" step="0.001" inputmode="decimal" placeholder="价格" title="港币价格" value="'+(p!=null?p:'')+'"></td>'+
   '<td><input type="number" step="1" inputmode="numeric" placeholder="股数" value="'+(s!=null?s:'')+'"></td>'+
-  '<td><input type="number" step="0.01" inputmode="decimal" placeholder="可选" title="填入含手续费的总付款（清算金额），自动算出 买入价＝总付款÷股数" value="'+(t!=null?t:'')+'"></td>'+
-  '<td><button class="delbtn" title="删除这笔">✕</button></td>';
+  (isHK
+   ?'<td><input type="number" step="0.01" inputmode="decimal" placeholder="人民币" title="填成交单上的清算金额（人民币），页面自动按汇率折算港币并算出买入价＝总付款÷汇率÷股数" value="'+(t!=null?t:'')+'"></td>'+
+    '<td><input type="number" step="0.0001" inputmode="decimal" placeholder="自动" title="港币→人民币汇率。留空则按该行日期自动获取（ECB参考汇率），也可手改成成交单上的实际汇率" value="'+(r!=null?r:'')+'"></td>'
+   :'<td><input type="number" step="0.01" inputmode="decimal" placeholder="可选" title="填入含手续费的总付款，自动算出 买入价＝总付款÷股数" value="'+(t!=null?t:'')+'"></td><td>—</td>');
+ tr.innerHTML+='<td><button class="delbtn" title="删除这笔">✕</button></td>';
  var ins=tr.querySelectorAll('input');
- ins[0].onchange=function(){ gSync(code); };
+ ins[0].onchange=function(){ if(isHK&&ins[4]&&ins[4].dataset.auto){ ins[4].value=''; } gSync(code); recalcAll(); ensureFx(code,tr); };
  ins[1].oninput=function(){ gSync(code); recalcAll(); };
  ins[2].oninput=function(){ gSync(code); recalcAll(); };
- ins[3].oninput=function(){ gSync(code); recalcAll(); };
+ ins[3].oninput=function(){ gSync(code); recalcAll(); ensureFx(code,tr); };
+ if(ins[4]) ins[4].oninput=function(){ if(ins[4].dataset.auto)ins[4].dataset.auto=''; gSync(code); recalcAll(); };
  tr.querySelector('.delbtn').onclick=function(){ tr.remove(); gSync(code); recalcAll(); };
  host.appendChild(tr);
  if(p!=null) gSync(code);
  recalcAll();
+ ensureFx(code,tr);
 }
 function gSetDiv(code,v){ var it=gitem(code); if(!it)return; it.div=parseFloat(v)||0; gsave(); recalcAll(); }
 function gBuild(){
@@ -279,7 +318,7 @@ function gBuild(){
    ' <span class="small">成本 <b id="gch_'+it.code+'">—</b> ｜ 市值 <b id="gmvh_'+it.code+'">—</b> ｜ 盈亏 <b id="gplh_'+it.code+'">—</b></span>'+
    ' <button class="delbtn" style="margin-left:auto" title="移除该标的" onclick="event.stopPropagation();removeItem(\''+it.code+'\')">✕</button></h3>'+
    '<div id="gbody_'+it.code+'" style="display:none">'+
-   '<table><tr><th>日期</th><th>买入价</th><th>股数</th><th title="填入含手续费的总付款（清算金额），自动算出 买入价＝总付款÷股数">总付款<br><span class="small">含费·可选</span></th><th></th></tr><tbody id="grows_'+it.code+'"></tbody></table>'+
+   '<table><tr><th>日期</th><th>买入价</th><th>股数</th><th title="港股填成交单清算金额（人民币），自动折算港币；A股填含手续费的总付款">总付款<br><span class="small">含费·可选</span></th><th title="港币→人民币汇率，仅港股：留空按该行日期自动获取（ECB参考汇率），可手改成成交单上的实际汇率">汇率<br><span class="small">港股·自动</span></th><th></th></tr><tbody id="grows_'+it.code+'"></tbody></table>'+
    '<button class="addbtn" onclick="gAddRow(\''+it.code+'\')">＋ 加一笔</button>'+
    '<div class="small" style="margin:4px 0">已收到分红 <input class="dps" type="number" step="0.01" value="'+(it.div||0)+'" onchange="gSetDiv(\''+it.code+'\',this.value)"> 元（现金到账后填写，未分红填0）</div>'+
    '<div class="stats">'+
@@ -294,7 +333,7 @@ function gBuild(){
    '</div>'+
    '</div>';
   host.appendChild(d);
-  (it.buys||[]).forEach(function(b){ gAddRow(it.code,b.d,b.p,b.s,b.t); });
+  (it.buys||[]).forEach(function(b){ gAddRow(it.code,b.d,b.p,b.s,b.t,b.r); });
  });
  if(!gstate.items.length) host.innerHTML='<div class="stock"><div class="small">还没有其他标的，在上方输入代码添加（如医药ETF 512010、阿里巴巴 hk09988）。</div></div>';
 }
@@ -334,7 +373,7 @@ function recalcAll(){
  var gCost=0,gMv=0,gDiv=0,gRows='';
  gstate.items.forEach(function(it){
   var p=gprice(it),sh=0,cost=0;
-  (it.buys||[]).forEach(function(b){ sh+=b.s; cost+=(b.t>0)?b.t:b.p*b.s; });
+  (it.buys||[]).forEach(function(b){ sh+=b.s; cost+=(b.t>0&&b.r>0)?b.t/b.r:((b.t>0)?b.t:b.p*b.s); });
   var mv=sh*p, div=it.div||0, avg=sh?cost/sh:null;
   gCost+=cost; gMv+=mv; gDiv+=div;
   function set(id,html,c){ var el=document.getElementById(id); if(!el)return; el.innerHTML=html; if(c!==undefined)el.className=c; }
