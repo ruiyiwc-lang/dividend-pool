@@ -61,7 +61,7 @@ footer { margin-top:34px; padding-top:14px; border-top:1px solid var(--line); fo
 <div id="stocks"></div>
 <h2 class="sect2">其他持仓</h2>
 <div id="gstocks"></div>
-<footer>口径：分红=实际到账的现金分红（派息到账后在卡内填写金额，未分红填0、不计入）；息(成本)=已收分红÷成本；总收益含息=(市值−成本+已收分红)÷成本；红利池现权重=池内市值占比 vs 目标权重。买入计划=200万×目标权重，分档股数与挂单价来自终版报告（①首笔/②加仓/恐慌，另留备用金）；「可挂」=现价已≤挂单价。三线来自终版报告（大底/买/卖）。行情源：A股/ETF用腾讯qt.gtimg.cn，港股/美股用东方财富实时行情，东财不可用时回退腾讯（港股延迟约15分钟）；无行情的标的暂以最近一笔买入价计。港股总付款填人民币清算金额，汇率按该行日期自动获取（ECB参考汇率，失败回退腾讯实时价），可手改为成交单实际汇率；港币成本＝总付款÷汇率，买入价＝港币成本÷股数。个人研究记录，非投资建议。</footer>
+<footer>口径：分红=实际到账的现金分红（派息到账后在卡内填写金额，未分红填0、不计入）；息(成本)=已收分红÷成本；总收益含息=(市值−成本+已收分红)÷成本；红利池现权重=池内市值占比 vs 目标权重。买入计划=200万×目标权重，分档股数与挂单价来自终版报告（①首笔/②加仓/恐慌，另留备用金）；「可挂」=现价已≤挂单价。三线来自终版报告（大底/买/卖）。行情源：A股/ETF用腾讯qt.gtimg.cn，港股/美股用东方财富实时节点（多节点轮换），东财不可用时回退腾讯（港股延迟约15分钟）；页面每60秒自动刷新一次，价格旁出现「延」字表示该股当前是延迟行情；无行情的标的暂以最近一笔买入价计。港股总付款填人民币清算金额，汇率按该行日期自动获取（ECB参考汇率，失败回退腾讯实时价），可手改为成交单实际汇率；港币成本＝总付款÷汇率，买入价＝港币成本÷股数。个人研究记录，非投资建议。</footer>
 <script>
 /* ---------- 公共 ---------- */
 var DEMO=location.search.indexOf('demo')>=0;
@@ -355,7 +355,7 @@ function recalcAll(){
   set('yoc_'+st.code,(div&&cost)?pct0(div/cost):'—');
   var tot=cost?(mv-cost+div)/cost:null; set('tot_'+st.code,div?pct(tot):'—',div?cls(tot):'');
   var q=quotes[st.code];
-  set('px_'+st.code,fmt(p,2)+(q&&q.pc?' <span class="'+cls(p/q.pc-1)+'" style="font-size:13px">'+pct(p/q.pc-1)+'</span>':''));
+  set('px_'+st.code,fmt(p,2)+(q&&q.pc?' <span class="'+cls(p/q.pc-1)+'" style="font-size:13px">'+pct(p/q.pc-1)+'</span>':'')+(q&&q.delay?' <span class="small" title="东财实时源失败，回退腾讯延迟行情（约15分钟）">延</span>':''));
   var z=zone(st); set('z_'+st.code,z[0],'bdg '+z[1]);
   var pb=document.getElementById('plan_'+st.code); if(pb) pb.innerHTML=planRows(st);
   set('ln_'+st.code,'三线：底 '+fmt(st.five[0],1)+' ｜ 买 '+fmt(st.five[1],1)+' ｜ 卖 '+fmt(st.five[2],1)+(p?' · 距卖出线 '+pct(st.five[2]/p-1):''));
@@ -386,7 +386,7 @@ function recalcAll(){
   set('gyoc_'+it.code,(div&&cost)?pct0(div/cost):'—');
   var tot=cost?(mv-cost+div)/cost:null; set('gtot_'+it.code,div?pct(tot):'—',div?cls(tot):'');
   var q=quotes[it.code];
-  set('gpx_'+it.code,gfmtP(p)+(q&&q.pc?' <span class="'+cls(p/q.pc-1)+'" style="font-size:13px">'+pct(p/q.pc-1)+'</span>':''));
+  set('gpx_'+it.code,gfmtP(p)+(q&&q.pc?' <span class="'+cls(p/q.pc-1)+'" style="font-size:13px">'+pct(p/q.pc-1)+'</span>':'')+(q&&q.delay?' <span class="small" title="东财实时源失败，回退腾讯延迟行情（约15分钟）">延</span>':''));
   gRows+='<tr onclick="jumpG(\''+it.code+'\')">'+
    '<td><b>'+(it.name||it.code)+'</b> <span class="small">'+it.code+'</span></td><td>'+gfmtP(p)+' / '+(avg?fmt(avg,3):'—')+'</td><td>'+fmt(sh,0)+'</td><td>'+(cost?fmt(cost,0):'—')+'</td><td>'+(sh?fmt(mv,0):'—')+'</td>'+
    '<td class="'+cls(pl)+'">'+(cost?sfmt(mv-cost)+'<br>'+pct(pl):'—')+'</td><td>'+(div?fmt(div,0):'')+'</td><td class="'+cls(tot)+'">'+(div?pct(tot):'')+'</td></tr>';
@@ -432,40 +432,61 @@ function restoreData(){
 }
 /* ---------- 行情 ---------- */
 function fmtEpoch(s){ if(!s)return ''; var d=new Date(s*1000); function z(n){return n<10?'0'+n:''+n;} return z(d.getMonth()+1)+'-'+z(d.getDate())+' '+z(d.getHours())+':'+z(d.getMinutes())+':'+z(d.getSeconds()); }
-function emFetch(secid){ return fetch('https://push2.eastmoney.com/api/qt/stock/get?secid='+secid+'&fltt=2&invt=2&fields=f43,f58,f60,f86').then(function(r){return r.json();}); }
+var EM_HOSTS=['push2.eastmoney.com','82.push2.eastmoney.com','17.push2.eastmoney.com','push2delay.eastmoney.com'];
+function emFetch(secid,host){ return fetch('https://'+host+'/api/qt/stock/get?secid='+secid+'&fltt=2&invt=2&fields=f43,f58,f60,f86').then(function(r){return r.json();}); }
 function loadEM(code,cb){
  var tail=code.slice(2);
  var secids=code.indexOf('hk')===0?['116.'+tail]:['105.'+tail,'106.'+tail,'107.'+tail];
- secids.reduce(function(p,s){ return p.then(function(v){ if(v&&v.data&&v.data.f43!=null)return v; return emFetch(s).catch(function(){return null;}); }); }, Promise.resolve(null))
+ var tries=[];
+ secids.forEach(function(s){ EM_HOSTS.forEach(function(h){ tries.push([s,h]); }); });
+ tries.reduce(function(p,t){ return p.then(function(v){ if(v&&v.data&&v.data.f43!=null)return v; return emFetch(t[0],t[1]).catch(function(){return null;}); }); }, Promise.resolve(null))
  .then(function(v){ cb(v&&v.data?v.data:null); });
 }
+var qBusy=false;
 function fetchQuotes(){
+ if(qBusy)return; qBusy=true;
  document.getElementById('qtime').textContent='行情：加载中…';
  var all=STOCKS.map(function(s){return s.code;}).concat(gstate.items.map(function(x){return x.code;}));
  var oCodes=all.filter(function(c){return c.indexOf('hk')===0||c.indexOf('us')===0;});
- var ts='',emTs='';
+ var ts='',emTs='',fresh={};
  function findItem(code){ for(var i=0;i<gstate.items.length;i++)if(gstate.items[i].code===code)return gstate.items[i]; return null; }
  function applyName(code,name){ var it=findItem(code); if(it&&!it.name){ it.name=name; var nm=document.getElementById('gnm_'+code); if(nm)nm.textContent=name; gsave(); } }
  function tencentFill(code){
   var v=window['v_'+code]; if(!v)return;
   var f=v.split('~');
-  if(f.length>30&&parseFloat(f[3])>0){ quotes[code]={p:parseFloat(f[3]),pc:parseFloat(f[4])}; var ft=fmtTs(f[30]||''); if(ft)ts=ft; }
+  if(f.length>30&&parseFloat(f[3])>0){ quotes[code]={p:parseFloat(f[3]),pc:parseFloat(f[4]),delay:(code.indexOf('hk')===0||code.indexOf('us')===0)?1:0}; var ft=fmtTs(f[30]||''); if(ft)ts=ft; }
   if(f.length>1&&f[1])applyName(code,f[1]);
  }
  function done(){
-  oCodes.forEach(function(c){ if(!quotes[c])tencentFill(c); });
+  var fb=0;
+  oCodes.forEach(function(c){ if(!fresh[c]){ fb++; if(!quotes[c])tencentFill(c); } });
   var t=emTs||ts;
-  document.getElementById('qtime').textContent = t ? '行情时间：'+t : '行情：获取失败，红利池用8/10收盘价兜底';
+  var label=t?'行情时间：'+t:'行情：获取失败，红利池用8/10收盘价兜底';
+  if(oCodes.length&&fb>0)label+='（部分延迟）';
+  document.getElementById('qtime').textContent=label;
   recalcAll();
+  qBusy=false;
  }
  var wait=2; function tick(){ if(--wait<=0)done(); }
  if(oCodes.length){
   var left=oCodes.length;
   oCodes.forEach(function(code){
-   loadEM(code,function(d){
-    if(d&&d.f43!=null){ quotes[code]={p:d.f43,pc:d.f60}; var ft=fmtEpoch(d.f86); if(ft)emTs=ft; if(d.f58)applyName(code,d.f58); }
-    if(--left<=0)tick();
-   });
+   function attempt(retry){
+    loadEM(code,function(d){
+     if(d&&d.f43!=null){
+      var dl=0;
+      if(code.indexOf('hk')===0&&d.f86){
+       var nw=new Date(),mins=nw.getHours()*60+nw.getMinutes();
+       var inSession=nw.getDay()>=1&&nw.getDay()<=5&&((mins>=570&&mins<720)||(mins>=780&&mins<970));
+       if(inSession&&(Date.now()/1000-d.f86)>180)dl=1;
+      }
+      quotes[code]={p:d.f43,pc:d.f60,delay:dl}; fresh[code]=1; var ft=fmtEpoch(d.f86); if(ft)emTs=ft; if(d.f58)applyName(code,d.f58); if(--left<=0)tick();
+     }
+     else if(retry){ setTimeout(function(){ attempt(false); },1200); }
+     else { if(--left<=0)tick(); }
+    });
+   }
+   attempt(true);
   });
  } else tick();
  var sc=document.createElement('script');
@@ -478,4 +499,5 @@ function fetchQuotes(){
  document.body.appendChild(sc);
 }
 build(); gBuild(); recalcAll(); fetchQuotes();
+setInterval(function(){ if(!document.hidden)fetchQuotes(); },60000);
 </script></body></html>
